@@ -5,11 +5,11 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "utfs.io",
+        hostname: "**",
       },
       {
-        protocol: "https",
-        hostname: "*.ufs.sh",
+        protocol: "http",
+        hostname: "**",
       },
     ],
   },

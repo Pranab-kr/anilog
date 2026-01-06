@@ -6,7 +6,6 @@ import { useUploadThing } from "@/lib/uploadthing/client";
 import { cn } from "@/lib/utils";
 import { Upload, X, Loader2, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 
 interface ImageUploaderProps {
   value?: string | null;
@@ -60,11 +59,11 @@ export function ImageUploader({ value, onChange, disabled }: ImageUploaderProps)
     return (
       <div className="relative w-full">
         <div className="relative aspect-[3/4] w-32 rounded-lg overflow-hidden border">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={value}
             alt="Cover image"
-            fill
-            className="object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
           />
           <Button
             type="button"

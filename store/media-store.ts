@@ -93,12 +93,8 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     const result = await updateMedia(input);
 
     if (result.success && result.data) {
-      set((state) => ({
-        media: state.media.map((item) =>
-          item.id === input.id ? result.data! : item
-        ),
-        isLoading: false,
-      }));
+      // Refetch to ensure data is in sync (handles type changes too)
+      await get().fetchMedia(get().activeMediaType);
       return { success: true };
     } else {
       set({ error: result.error || "Failed to update media", isLoading: false });

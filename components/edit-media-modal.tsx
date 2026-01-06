@@ -2,8 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { Plus } from "lucide-react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -12,7 +11,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -22,35 +20,47 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ImageUploader } from "@/components/image-uploader"
 import { useMediaStore, statusDisplayMap } from "@/store/media-store"
 import { toast } from "sonner"
-import type { MediaStatus, MediaType } from "@/actions/media"
+import type { MediaItem, MediaStatus, MediaType } from "@/actions/media"
 
-export function AddEntryModal() {
-  const [open, setOpen] = useState(false)
-  const [title, setTitle] = useState("")
-  const [mediaType, setMediaType] = useState<MediaType>("anime")
-  const [status, setStatus] = useState<MediaStatus>("plan")
-  const [progress, setProgress] = useState(0)
-  const [total, setTotal] = useState(12)
-  const [coverImage, setCoverImage] = useState<string | null>(null)
+interface EditMediaModalProps {
+  item: MediaItem
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+export function EditMediaModal({ item, open, onOpenChange }: EditMediaModalProps) {
+  const [title, setTitle] = useState(item.title)
+  const [mediaType, setMediaType] = useState<MediaType>(item.type)
+  const [status, setStatus] = useState<MediaStatus>(item.status)
+  const [progress, setProgress] = useState(item.progress)
+  const [total, setTotal] = useState(item.total || 12)
+  const [coverImage, setCoverImage] = useState<string | null>(item.coverImage)
   const [imageUrl, setImageUrl] = useState("")
-  const [notes, setNotes] = useState("")
+  const [notes, setNotes] = useState(item.notes || "")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const { addMedia, activeMediaType } = useMediaStore()
+  const { editMedia, fetchMedia, activeMediaType } = useMediaStore()
 
-  // Set default media type to active tab when modal opens
-  const handleOpenChange = (isOpen: boolean) => {
-    setOpen(isOpen)
-    if (isOpen) {
-      setMediaType(activeMediaType)
+  // Reset form when item changes
+  useEffect(() => {
+    if (open) {
+      setTitle(item.title)
+      setMediaType(item.type)
+      setStatus(item.status)
+      setProgress(item.progress)
+      setTotal(item.total || 12)
+      setCoverImage(item.coverImage)
+      setImageUrl("")
+      setNotes(item.notes || "")
     }
-  }
+  }, [item, open])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
-    const result = await addMedia({
+    const result = await editMedia({
+      id: item.id,
       title,
       type: mediaType,
       status,
@@ -63,23 +73,15 @@ export function AddEntryModal() {
     setIsSubmitting(false)
 
     if (result.success) {
-      toast.success(`"${title}" added to your ${mediaType} list!`)
-      setOpen(false)
-      resetForm()
+      toast.success("Media updated successfully!")
+      onOpenChange(false)
+      // Refresh if type changed
+      if (mediaType !== item.type) {
+        fetchMedia(activeMediaType)
+      }
     } else {
-      toast.error(result.error || "Failed to add entry")
+      toast.error(result.error || "Failed to update media")
     }
-  }
-
-  const resetForm = () => {
-    setTitle("")
-    setMediaType(activeMediaType)
-    setStatus("plan")
-    setProgress(0)
-    setTotal(12)
-    setCoverImage(null)
-    setImageUrl("")
-    setNotes("")
   }
 
   const getProgressLabel = () => {
@@ -88,17 +90,13 @@ export function AddEntryModal() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button className="rounded-full gap-2" />}>
-        <Plus className="size-4" />
-        Add Entry
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Add New Entry</DialogTitle>
+            <DialogTitle>Edit Entry</DialogTitle>
             <DialogDescription>
-              Add a new entry to your tracking list. Fill in the details below.
+              Update the details of your entry.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -115,11 +113,11 @@ export function AddEntryModal() {
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="title" className="text-right">
+              <Label htmlFor="edit-title" className="text-right">
                 Title
               </Label>
               <Input
-                id="title"
+                id="edit-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="col-span-3"
@@ -128,7 +126,7 @@ export function AddEntryModal() {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">
+              <Label htmlFor="edit-status" className="text-right">
                 Status
               </Label>
               <Select 
@@ -147,12 +145,12 @@ export function AddEntryModal() {
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="progress" className="text-right">
+              <Label htmlFor="edit-progress" className="text-right">
                 {getProgressLabel()}
               </Label>
               <div className="col-span-3 flex items-center gap-2">
                 <Input
-                  id="progress"
+                  id="edit-progress"
                   type="number"
                   value={progress}
                   onChange={(e) => setProgress(Number(e.target.value))}
@@ -162,7 +160,7 @@ export function AddEntryModal() {
                 />
                 <span className="text-muted-foreground">/</span>
                 <Input
-                  id="total"
+                  id="edit-total"
                   type="number"
                   value={total}
                   onChange={(e) => setTotal(Number(e.target.value))}
@@ -174,11 +172,11 @@ export function AddEntryModal() {
 
             {/* Notes Section */}
             <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="notes" className="text-right pt-2">
+              <Label htmlFor="edit-notes" className="text-right pt-2">
                 Notes
               </Label>
               <Textarea
-                id="notes"
+                id="edit-notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 className="col-span-3"
@@ -211,7 +209,7 @@ export function AddEntryModal() {
                 {/* URL Input */}
                 {!coverImage && (
                   <Input
-                    id="image-url"
+                    id="edit-image-url"
                     value={imageUrl}
                     onChange={(e) => setImageUrl(e.target.value)}
                     placeholder="Enter image URL"
@@ -222,8 +220,11 @@ export function AddEntryModal() {
             </div>
           </div>
           <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Adding..." : "Add to List"}
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </form>
