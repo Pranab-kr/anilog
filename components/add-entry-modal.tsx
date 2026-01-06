@@ -33,7 +33,7 @@ export function AddEntryModal() {
   const [imageUrl, setImageUrl] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const { addMedia, activeMediaType, fetchMedia } = useMediaStore()
+  const { addMedia, activeMediaType } = useMediaStore()
 
   // Set default media type to active tab when modal opens
   const handleOpenChange = (isOpen: boolean) => {
@@ -61,10 +61,6 @@ export function AddEntryModal() {
     if (result.success) {
       setOpen(false)
       resetForm()
-      // Refresh the list if adding to a different type than currently viewed
-      if (mediaType !== activeMediaType) {
-        fetchMedia(activeMediaType)
-      }
     }
   }
 

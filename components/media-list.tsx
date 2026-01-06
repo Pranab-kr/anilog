@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect } from "react"
 import { MediaCard } from "@/components/media-card"
 import { Input } from "@/components/ui/input"
 import { Search, Loader2 } from "lucide-react"
@@ -27,11 +26,6 @@ export function MediaList() {
   } = useMediaStore()
 
   const filteredItems = getFilteredMedia()
-
-  // Fetch media on mount
-  useEffect(() => {
-    fetchMedia()
-  }, [fetchMedia])
 
   const getFilterLabel = (filter: FilterStatus): string => {
     if (filter === "All") return "All"

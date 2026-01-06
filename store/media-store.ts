@@ -77,10 +77,8 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     const result = await createMedia(input);
 
     if (result.success && result.data) {
-      set((state) => ({
-        media: [result.data!, ...state.media],
-        isLoading: false,
-      }));
+      // Always refetch to ensure data consistency
+      await get().fetchMedia(get().activeMediaType);
       return { success: true };
     } else {
       set({ error: result.error || "Failed to add media", isLoading: false });

@@ -1,12 +1,18 @@
 "use client"
 
+import { useEffect } from "react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { MediaList } from "@/components/media-list"
 import { useMediaStore } from "@/store/media-store"
 import type { MediaType } from "@/actions/media"
 
 export function MediaTabs() {
-  const { activeMediaType, setActiveMediaType } = useMediaStore()
+  const { activeMediaType, setActiveMediaType, fetchMedia } = useMediaStore()
+
+  // Fetch media on initial mount
+  useEffect(() => {
+    fetchMedia(activeMediaType)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTabChange = (value: string) => {
     setActiveMediaType(value as MediaType)
@@ -22,15 +28,8 @@ export function MediaTabs() {
         </TabsList>
       </div>
 
-      <TabsContent value="anime">
-        <MediaList />
-      </TabsContent>
-      <TabsContent value="manga">
-        <MediaList />
-      </TabsContent>
-      <TabsContent value="manhwa">
-        <MediaList />
-      </TabsContent>
+      {/* Single MediaList that reacts to activeMediaType changes */}
+      <MediaList />
     </Tabs>
   )
 }
