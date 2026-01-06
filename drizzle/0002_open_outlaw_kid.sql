@@ -1,0 +1,3 @@
+ALTER TABLE "media" ADD COLUMN "user_id" text NOT NULL;--> statement-breakpoint
+ALTER TABLE "media" ADD CONSTRAINT "media_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "media_userId_idx" ON "media" USING btree ("user_id");
