@@ -2,10 +2,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { MediaList } from "@/components/media-list";
+import { MediaTabs } from "@/components/media-tabs";
 
 export default async function mainPage() {
   const session = await auth.api.getSession({
@@ -51,21 +49,7 @@ export default async function mainPage() {
             A relaxing space to keep track of your favorite anime, manga, and manhwa.
           </p>
 
-          <Tabs defaultValue="anime" className="w-full">
-            <div className="flex justify-center mb-8">
-              <TabsList className="bg-secondary/50 p-1">
-                <TabsTrigger value="anime">Anime</TabsTrigger>
-                <TabsTrigger value="manga">Manga</TabsTrigger>
-                <TabsTrigger value="manhwa">Manhwa</TabsTrigger>
-              </TabsList>
-            </div>
-
-            <TabsContent value="anime">
-              <MediaList />
-            </TabsContent>
-            <TabsContent value="manga">{/* Placeholder for Manga content */}</TabsContent>
-            <TabsContent value="manhwa">{/* Placeholder for Manhwa content */}</TabsContent>
-          </Tabs>
+          <MediaTabs />
         </section>
       </main>
     </div>
