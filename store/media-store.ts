@@ -42,7 +42,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
   media: [],
   isLoading: false,
   error: null,
-  activeMediaType: "anime",
+  activeMediaType: "manhwa",
   searchQuery: "",
   activeFilter: "All",
 

@@ -7,7 +7,7 @@ import { AddEntryModal } from "@/components/add-entry-modal"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useMediaStore, statusDisplayMap } from "@/store/media-store"
-import type { MediaStatus } from "@/actions/media"
+import type { MediaStatus, MediaItem } from "@/actions/media"
 
 type FilterStatus = "All" | MediaStatus
 
@@ -75,11 +75,14 @@ export function MediaList() {
             )}
           >
             {getFilterLabel(filter)}
-            {activeFilter === filter && (
-              <span className="ml-2 bg-primary-foreground/20 px-1.5 py-0.5 rounded text-[10px] font-bold">
-                {filteredItems.length}
-              </span>
-            )}
+            <span className={cn(
+              "ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold",
+              activeFilter === filter
+                ? "bg-transparent text-primary-foreground"
+                : "bg-transparent text-muted-foreground"
+            )}>
+              {filter === "All" ? filteredItems.length : useMediaStore.getState().media.filter((item: MediaItem) => item.status === filter).length}
+            </span>
           </Button>
         ))}
       </div>

@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useState } from "react";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -13,42 +13,48 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ImageUploader } from "@/components/image-uploader"
-import { useMediaStore, statusDisplayMap } from "@/store/media-store"
-import { toast } from "sonner"
-import type { MediaStatus, MediaType } from "@/actions/media"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ImageUploader } from "@/components/image-uploader";
+import { useMediaStore, statusDisplayMap } from "@/store/media-store";
+import { toast } from "sonner";
+import type { MediaStatus, MediaType } from "@/actions/media";
+import { LabelInputContainer } from "./signup-form-demo";
 
 export function AddEntryModal() {
-  const [open, setOpen] = useState(false)
-  const [title, setTitle] = useState("")
-  const [mediaType, setMediaType] = useState<MediaType>("anime")
-  const [status, setStatus] = useState<MediaStatus>("plan")
-  const [progress, setProgress] = useState(0)
-  const [total, setTotal] = useState(12)
-  const [coverImage, setCoverImage] = useState<string | null>(null)
-  const [imageUrl, setImageUrl] = useState("")
-  const [notes, setNotes] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [mediaType, setMediaType] = useState<MediaType>("anime");
+  const [status, setStatus] = useState<MediaStatus>("plan");
+  const [progress, setProgress] = useState(0);
+  const [total, setTotal] = useState(12);
+  const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [notes, setNotes] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { addMedia, activeMediaType } = useMediaStore()
+  const { addMedia, activeMediaType } = useMediaStore();
 
   // Set default media type to active tab when modal opens
   const handleOpenChange = (isOpen: boolean) => {
-    setOpen(isOpen)
+    setOpen(isOpen);
     if (isOpen) {
-      setMediaType(activeMediaType)
+      setMediaType(activeMediaType);
     }
-  }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
 
     const result = await addMedia({
       title,
@@ -56,40 +62,39 @@ export function AddEntryModal() {
       status,
       progress,
       total: total || null,
-      coverImage: coverImage || imageUrl || null,
+      coverImage: coverImage || null,
       notes: notes.trim() || null,
-    })
+    });
 
-    setIsSubmitting(false)
+    setIsSubmitting(false);
 
     if (result.success) {
-      toast.success(`"${title}" added to your ${mediaType} list!`)
-      setOpen(false)
-      resetForm()
+      toast.success(`"${title}" added to your ${mediaType} list!`);
+      setOpen(false);
+      resetForm();
     } else {
-      toast.error(result.error || "Failed to add entry")
+      toast.error(result.error || "Failed to add entry");
     }
-  }
+  };
 
   const resetForm = () => {
-    setTitle("")
-    setMediaType(activeMediaType)
-    setStatus("plan")
-    setProgress(0)
-    setTotal(12)
-    setCoverImage(null)
-    setImageUrl("")
-    setNotes("")
-  }
+    setTitle("");
+    setMediaType(activeMediaType);
+    setStatus("plan");
+    setProgress(0);
+    setTotal(12);
+    setCoverImage(null);
+    setNotes("");
+  };
 
   const getProgressLabel = () => {
-    if (mediaType === "anime") return "Episodes"
-    return "Chapters"
-  }
+    if (mediaType === "anime") return "Episodes";
+    return "Chapters";
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button className="rounded-full gap-2" />}>
+      <DialogTrigger render={<Button className=" gap-2" />}>
         <Plus className="size-4" />
         Add Entry
       </DialogTrigger>
@@ -105,52 +110,66 @@ export function AddEntryModal() {
             {/* Media Type Tabs */}
             <div className="space-y-2">
               <Label>Type</Label>
-              <Tabs value={mediaType} onValueChange={(v) => setMediaType(v as MediaType)} className="w-full">
+              <Tabs
+                value={mediaType}
+                onValueChange={(v) => setMediaType(v as MediaType)}
+                className="w-full"
+              >
                 <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="anime" disabled={isSubmitting}>Anime</TabsTrigger>
-                  <TabsTrigger value="manga" disabled={isSubmitting}>Manga</TabsTrigger>
-                  <TabsTrigger value="manhwa" disabled={isSubmitting}>Manhwa</TabsTrigger>
+                  <TabsTrigger value="anime" disabled={isSubmitting}>
+                    Anime
+                  </TabsTrigger>
+                  <TabsTrigger value="manhwa" disabled={isSubmitting}>
+                    Manhwa
+                  </TabsTrigger>
+                  <TabsTrigger value="manga" disabled={isSubmitting}>
+                    Manga
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="title" className="text-right">
+            <LabelInputContainer className="mb-4">
+              <Label htmlFor="title" className="">
                 Title
               </Label>
               <Input
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="col-span-3"
+                className="flex-1 min-w-full"
                 required
                 disabled={isSubmitting}
               />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">
+            </LabelInputContainer>
+            <div className="flex items-center gap-4">
+              <Label htmlFor="status" className="text-left md:text-right">
                 Status
               </Label>
-              <Select 
-                value={status} 
+              <Select
+                value={status}
                 onValueChange={(v) => setStatus(v as MediaStatus)}
                 disabled={isSubmitting}
               >
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger className="col-span-1 md:col-span-3">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="watching">{statusDisplayMap.watching}</SelectItem>
-                  <SelectItem value="completed">{statusDisplayMap.completed}</SelectItem>
+                  <SelectItem value="watching">
+                    {statusDisplayMap.watching}
+                  </SelectItem>
+                  <SelectItem value="completed">
+                    {statusDisplayMap.completed}
+                  </SelectItem>
                   <SelectItem value="plan">{statusDisplayMap.plan}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="progress" className="text-right">
+            <div className="grid grid-cols-1 md:grid-cols-6 items-center gap-4">
+              <Label htmlFor="progress" className="text-left md:text-left">
                 {getProgressLabel()}
               </Label>
-              <div className="col-span-3 flex items-center gap-2">
+              <div className="col-span-1 md:col-span-5 flex items-center gap-2">
                 <Input
                   id="progress"
                   type="number"
@@ -172,55 +191,34 @@ export function AddEntryModal() {
               </div>
             </div>
 
-            {/* Notes Section */}
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="notes" className="text-right pt-2">
+            <LabelInputContainer className="mb-4">
+              <Label htmlFor="notes" className="text-left md:text-left pt-2">
                 Notes
               </Label>
               <Textarea
                 id="notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="col-span-3"
+                className="col-span-1 md:col-span-5"
                 placeholder="Add personal notes (optional)"
                 rows={3}
                 disabled={isSubmitting}
               />
-            </div>
-            
+            </LabelInputContainer>
+
             {/* Image Upload Section */}
-            <div className="space-y-3">
-              <Label>Cover Image</Label>
-              <div className="space-y-3">
-                {/* UploadThing Image Uploader */}
+            <LabelInputContainer className="mb-4">
+              <Label className="text-left pt-2">Cover Image</Label>
+              <div className="col-span-1 md:col-span-2 pt-4">
                 <ImageUploader
                   value={coverImage}
                   onChange={setCoverImage}
                   disabled={isSubmitting}
                 />
-
-                {/* Divider */}
-                {!coverImage && (
-                  <div className="flex items-center gap-2">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-xs text-muted-foreground">OR</span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                )}
-
-                {/* URL Input */}
-                {!coverImage && (
-                  <Input
-                    id="image-url"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="Enter image URL"
-                    disabled={isSubmitting}
-                  />
-                )}
               </div>
-            </div>
+            </LabelInputContainer>
           </div>
+
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Adding..." : "Add to List"}
@@ -229,5 +227,5 @@ export function AddEntryModal() {
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

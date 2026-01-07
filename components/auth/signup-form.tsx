@@ -25,6 +25,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
+import { BottomGradient } from "../signup-form-demo";
 
 export function SignupForm() {
   const router = useRouter();
@@ -131,7 +132,7 @@ export function SignupForm() {
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
+              <span className="bg-transparent px-2 text-muted-foreground">
                 Or continue with
               </span>
             </div>
@@ -186,6 +187,14 @@ export function SignupForm() {
                 />
                 <FieldError>{errors.confirmPassword?.message}</FieldError>
               </Field>
+{/*
+<button
+          className="group/btn relative block h-10 w-full rounded-md bg-gradient-to-br from-black to-neutral-600 font-medium text-white shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:bg-zinc-800 dark:from-zinc-950 dark:to-zinc-900 dark:shadow-[0px_1px_0px_0px_#27272a_inset,0px_-1px_0px_0px_#27272a_inset]"
+          type="submit"
+        >
+          Sign up &rarr;
+          <BottomGradient />
+        </button> */}
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? (

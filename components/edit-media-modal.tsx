@@ -35,7 +35,6 @@ export function EditMediaModal({ item, open, onOpenChange }: EditMediaModalProps
   const [progress, setProgress] = useState(item.progress)
   const [total, setTotal] = useState(item.total || 12)
   const [coverImage, setCoverImage] = useState<string | null>(item.coverImage)
-  const [imageUrl, setImageUrl] = useState("")
   const [notes, setNotes] = useState(item.notes || "")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -50,7 +49,6 @@ export function EditMediaModal({ item, open, onOpenChange }: EditMediaModalProps
       setProgress(item.progress)
       setTotal(item.total || 12)
       setCoverImage(item.coverImage)
-      setImageUrl("")
       setNotes(item.notes || "")
     }
   }, [item, open])
@@ -66,7 +64,7 @@ export function EditMediaModal({ item, open, onOpenChange }: EditMediaModalProps
       status,
       progress,
       total: total || null,
-      coverImage: coverImage || imageUrl || null,
+      coverImage: coverImage || null,
       notes: notes.trim() || null,
     })
 
@@ -196,26 +194,6 @@ export function EditMediaModal({ item, open, onOpenChange }: EditMediaModalProps
                   onChange={setCoverImage}
                   disabled={isSubmitting}
                 />
-
-                {/* Divider */}
-                {!coverImage && (
-                  <div className="flex items-center gap-2">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-xs text-muted-foreground">OR</span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                )}
-
-                {/* URL Input */}
-                {!coverImage && (
-                  <Input
-                    id="edit-image-url"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="Enter image URL"
-                    disabled={isSubmitting}
-                  />
-                )}
               </div>
             </div>
           </div>

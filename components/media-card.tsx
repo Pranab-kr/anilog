@@ -22,6 +22,7 @@ import { useMediaStore, statusDisplayMap } from "@/store/media-store"
 import { EditMediaModal } from "@/components/edit-media-modal"
 import { toast } from "sonner"
 import type { MediaItem, MediaStatus } from "@/actions/media"
+import Image from "next/image"
 
 interface MediaCardProps {
   item: MediaItem
@@ -87,7 +88,7 @@ export function MediaCard({ item }: MediaCardProps) {
             <div className="absolute top-2 left-2 right-2 flex justify-between items-start">
               <Badge className={statusColors[status]}>{statusDisplayMap[status]}</Badge>
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+                <DropdownMenuTrigger >
                   <Button
                     variant="ghost"
                     size="icon"
@@ -115,10 +116,10 @@ export function MediaCard({ item }: MediaCardProps) {
                   {progress} / {total || "?"} {progressLabel}
                 </span>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="size-6 rounded-full" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 rounded-full"
                     onClick={() => handleProgress(-1)}
                     disabled={progress <= 0 || progressLoading !== null}
                   >
@@ -128,10 +129,10 @@ export function MediaCard({ item }: MediaCardProps) {
                       <Minus className="size-3" />
                     )}
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="size-6 rounded-full" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 rounded-full"
                     onClick={() => handleProgress(1)}
                     disabled={(total ? progress >= total : false) || progressLoading !== null}
                   >
@@ -149,10 +150,10 @@ export function MediaCard({ item }: MediaCardProps) {
         </CardContent>
       </Card>
 
-      <EditMediaModal 
-        item={item} 
-        open={isEditOpen} 
-        onOpenChange={setIsEditOpen} 
+      <EditMediaModal
+        item={item}
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
       />
 
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
@@ -168,8 +169,8 @@ export function MediaCard({ item }: MediaCardProps) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              variant="destructive" 
+            <AlertDialogAction
+              variant="destructive"
               onClick={handleDelete}
               disabled={isDeleting}
             >
