@@ -16,7 +16,7 @@ export default async function mainPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <div className="size-8 rounded-full bg-primary" />
@@ -40,7 +40,7 @@ export default async function mainPage() {
             </div>
           </div>
         </div>
-      </header> */}
+      </header>
 
       <main className="container mx-auto px-4 py-16">
         <section className="mb-12 flex flex-col items-center text-center">
