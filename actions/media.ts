@@ -64,6 +64,19 @@ export async function createMedia(input: CreateMediaInput): Promise<{ success: b
   try {
     const user = await getCurrentUser();
 
+    // Check for duplicate title
+    const [existingMedia] = await db
+      .select()
+      .from(media)
+      .where(and(eq(media.title, input.title), eq(media.userId, user.id)));
+
+    if (existingMedia) {
+      return {
+        success: false,
+        error: `A media with the title "${input.title}" already exists in your list`,
+      };
+    }
+
     const [newMedia] = await db
       .insert(media)
       .values({
@@ -167,6 +180,21 @@ export async function updateMedia(input: UpdateMediaInput): Promise<{ success: b
         success: false,
         error: "Media not found or unauthorized",
       };
+    }
+
+    // Check for duplicate title (if title is being updated)
+    if (input.title !== undefined && input.title !== existing.title) {
+      const [duplicateMedia] = await db
+        .select()
+        .from(media)
+        .where(and(eq(media.title, input.title), eq(media.userId, user.id)));
+
+      if (duplicateMedia) {
+        return {
+          success: false,
+          error: `A media with the title "${input.title}" already exists in your list`,
+        };
+      }
     }
 
     const updateData: Partial<typeof media.$inferInsert> = {
