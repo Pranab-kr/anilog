@@ -8,7 +8,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 // Types
-export type MediaType = "anime" | "manga" | "manhwa";
+export type MediaType = "anime" | "manga";
 export type MediaStatus = "watching" | "completed" | "plan";
 
 export interface MediaItem {

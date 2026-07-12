@@ -16,11 +16,10 @@ import { user } from "./auth-schema";
 =========================== */
 
 // Media type
-export const mediaTypeEnum = pgEnum("media_type", [
-  "anime",
-  "manga",
-  "manhwa",
-]);
+// NOTE: manhwa was merged into manga (manhwa is just manga of Korean origin on
+// AniList too). The old "manhwa" value is removed from both the TS type and the
+// Postgres enum; migration 0003 converts existing rows + recreates the enum.
+export const mediaTypeEnum = pgEnum("media_type", ["anime", "manga"]);
 
 // Watch / Read status
 export const mediaStatusEnum = pgEnum("media_status", [
