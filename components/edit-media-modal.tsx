@@ -102,10 +102,9 @@ export function EditMediaModal({ item, open, onOpenChange }: EditMediaModalProps
             <div className="space-y-2">
               <Label>Type</Label>
               <Tabs value={mediaType} onValueChange={(v) => setMediaType(v as MediaType)} className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="anime" disabled={isSubmitting}>Anime</TabsTrigger>
                   <TabsTrigger value="manga" disabled={isSubmitting}>Manga</TabsTrigger>
-                  <TabsTrigger value="manhwa" disabled={isSubmitting}>Manhwa</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>

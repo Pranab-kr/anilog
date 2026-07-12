@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "AniLog - Track Your Anime Journey",
-  description: "A relaxing space to keep track of your favorite anime, manga, and manhwa.",
+  description: "A relaxing space to keep track of your favorite anime and manga.",
 };
 
 export default function RootLayout({

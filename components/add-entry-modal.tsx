@@ -115,12 +115,9 @@ export function AddEntryModal() {
                 onValueChange={(v) => setMediaType(v as MediaType)}
                 className="w-full"
               >
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="anime" disabled={isSubmitting}>
                     Anime
-                  </TabsTrigger>
-                  <TabsTrigger value="manhwa" disabled={isSubmitting}>
-                    Manhwa
                   </TabsTrigger>
                   <TabsTrigger value="manga" disabled={isSubmitting}>
                     Manga

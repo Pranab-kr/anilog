@@ -57,8 +57,7 @@ export default async function mainPage() {
             Track your cozy journey.
           </h2>
           <p className="max-w-[600px] text-muted-foreground text-lg mb-8 text-pretty">
-            A relaxing space to keep track of your favorite anime, manga, and
-            manhwa.
+            A relaxing space to keep track of your favorite anime and manga.
           </p>
 
           <MediaTabs />

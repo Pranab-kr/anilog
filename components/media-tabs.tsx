@@ -5,7 +5,7 @@ import { FloatingDock } from "@/components/ui/floating-dock";
 import { MediaList } from "@/components/media-list";
 import { useMediaStore } from "@/store/media-store";
 import type { MediaType } from "@/actions/media";
-import { Tv, Book, BookOpen, LogOut, Moon, Sun } from "lucide-react";
+import { Tv, Book, LogOut, Moon, Sun } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
@@ -35,13 +35,6 @@ export function MediaTabs() {
   };
 
   const items = [
-    {
-      title: "Manhwa",
-      icon: (
-        <BookOpen className="h-full w-full text-neutral-500 dark:text-neutral-300" />
-      ),
-      onClick: () => handleTabChange("manhwa"),
-    },
     {
       title: "Anime",
       icon: (
