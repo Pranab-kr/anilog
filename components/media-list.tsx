@@ -1,12 +1,17 @@
 "use client"
 
+import { useState } from "react"
 import { MediaCard } from "@/components/media-card"
 import { Input } from "@/components/ui/input"
-import { Search, Loader2 } from "lucide-react"
+import { Search, Loader2, RefreshCw } from "lucide-react"
 import { AddEntryModal } from "@/components/add-entry-modal"
+import { AniListConnectButton } from "@/components/anilist-connect-button"
+import { AniListImportModal } from "@/components/anilist-import-modal"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useMediaStore, statusDisplayMap } from "@/store/media-store"
+import { useAniList } from "@/hooks/use-anilist"
+import { toast } from "sonner"
 import type { MediaStatus, MediaItem } from "@/actions/media"
 
 type FilterStatus = "All" | MediaStatus
@@ -25,7 +30,26 @@ export function MediaList() {
     getFilteredMedia,
   } = useMediaStore()
 
+  const { connection, loading: anilistLoading } = useAniList()
+  const [syncing, setSyncing] = useState(false)
+
   const filteredItems = getFilteredMedia()
+
+  const handleSyncFromAniList = async () => {
+    setSyncing(true)
+    const { syncFromAniList } = await import("@/actions/anilist-import")
+    const result = await syncFromAniList()
+    setSyncing(false)
+
+    if (result.success && result.data) {
+      toast.success(
+        `Synced: ${result.data.imported} new, ${result.data.skipped} updated`,
+      )
+      await fetchMedia()
+    } else {
+      toast.error(result.error ?? "Sync failed")
+    }
+  }
 
   const getFilterLabel = (filter: FilterStatus): string => {
     if (filter === "All") return "All"
@@ -57,7 +81,27 @@ export function MediaList() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <AddEntryModal />
+        <div className="flex items-center gap-2">
+          <AniListConnectButton />
+          {connection?.connected && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={handleSyncFromAniList}
+              disabled={syncing || anilistLoading}
+            >
+              {syncing ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="size-4" />
+              )}
+              Sync
+            </Button>
+          )}
+          <AniListImportModal />
+          <AddEntryModal />
+        </div>
       </div>
 
       <div className="flex flex-wrap justify-center gap-2 max-w-4xl mx-auto">
