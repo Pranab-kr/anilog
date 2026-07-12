@@ -6,6 +6,11 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { eq, and, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import {
+  _getAniListAccessToken,
+} from "@/actions/anilist";
+import { saveMediaListEntry, deleteMediaListEntry } from "@/lib/anilist/client";
+import { localStatusToAnilist } from "@/lib/anilist/mapping";
 
 // Types
 export type MediaType = "anime" | "manga";
@@ -21,6 +26,8 @@ export interface MediaItem {
   total: number | null;
   notes: string | null;
   userId: string;
+  anilistMediaId: number | null;
+  anilistListEntryId: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,6 +40,7 @@ export interface CreateMediaInput {
   progress?: number;
   total?: number | null;
   notes?: string | null;
+  anilistMediaId?: number | null;
 }
 
 export interface UpdateMediaInput {
@@ -88,8 +96,34 @@ export async function createMedia(input: CreateMediaInput): Promise<{ success: b
         total: input.total || null,
         notes: input.notes || null,
         userId: user.id,
+        anilistMediaId: input.anilistMediaId ?? null,
       })
       .returning();
+
+    // Write-through: mirror to AniList if connected and linked
+    if (newMedia.anilistMediaId) {
+      const token = await _getAniListAccessToken();
+      if (token) {
+        try {
+          const entryId = await saveMediaListEntry(
+            {
+              mediaId: newMedia.anilistMediaId,
+              status: localStatusToAnilist((newMedia.status ?? "plan") as MediaStatus),
+              progress: newMedia.progress,
+              notes: newMedia.notes ?? undefined,
+            },
+            token,
+          );
+          await db
+            .update(media)
+            .set({ anilistListEntryId: entryId })
+            .where(eq(media.id, newMedia.id));
+          newMedia.anilistListEntryId = entryId;
+        } catch (syncErr) {
+          console.error("AniList sync failed on create:", syncErr);
+        }
+      }
+    }
 
     revalidatePath("/");
 
@@ -215,6 +249,26 @@ export async function updateMedia(input: UpdateMediaInput): Promise<{ success: b
       .where(and(eq(media.id, input.id), eq(media.userId, user.id)))
       .returning();
 
+    // Write-through: mirror to AniList
+    if (updatedMedia.anilistMediaId) {
+      const token = await _getAniListAccessToken();
+      if (token) {
+        try {
+          await saveMediaListEntry(
+            {
+              mediaId: updatedMedia.anilistMediaId,
+              status: localStatusToAnilist(updatedMedia.status as MediaStatus),
+              progress: updatedMedia.progress,
+              notes: updatedMedia.notes ?? undefined,
+            },
+            token,
+          );
+        } catch (syncErr) {
+          console.error("AniList sync failed on update:", syncErr);
+        }
+      }
+    }
+
     revalidatePath("/");
 
     return {
@@ -271,6 +325,25 @@ export async function updateMediaProgress(
       .where(and(eq(media.id, id), eq(media.userId, user.id)))
       .returning();
 
+    // Write-through: mirror progress to AniList
+    if (updatedMedia.anilistMediaId) {
+      const token = await _getAniListAccessToken();
+      if (token) {
+        try {
+          await saveMediaListEntry(
+            {
+              mediaId: updatedMedia.anilistMediaId,
+              status: localStatusToAnilist(updatedMedia.status as MediaStatus),
+              progress: updatedMedia.progress,
+            },
+            token,
+          );
+        } catch (syncErr) {
+          console.error("AniList sync failed on progress update:", syncErr);
+        }
+      }
+    }
+
     revalidatePath("/");
 
     return {
@@ -302,6 +375,18 @@ export async function deleteMedia(id: string): Promise<{ success: boolean; error
         success: false,
         error: "Media not found or unauthorized",
       };
+    }
+
+    // Write-through: delete from AniList before local delete
+    if (existing.anilistListEntryId) {
+      const token = await _getAniListAccessToken();
+      if (token) {
+        try {
+          await deleteMediaListEntry(existing.anilistListEntryId, token);
+        } catch (syncErr) {
+          console.error("AniList sync failed on delete:", syncErr);
+        }
+      }
     }
 
     await db

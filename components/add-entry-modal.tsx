@@ -2,8 +2,8 @@
 
 import type React from "react";
 
-import { useState } from "react";
-import { Plus } from "lucide-react";
+import { useState, useCallback } from "react";
+import { Plus, Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,6 +30,9 @@ import { useMediaStore, statusDisplayMap } from "@/store/media-store";
 import { toast } from "sonner";
 import type { MediaStatus, MediaType } from "@/actions/media";
 import { LabelInputContainer } from "./signup-form-demo";
+import { searchAniList } from "@/actions/anilist";
+import { localTypeToAnilist, pickTitle } from "@/lib/anilist";
+import type { AniListSearchResult } from "@/lib/anilist";
 
 export function AddEntryModal() {
   const [open, setOpen] = useState(false);
@@ -41,6 +44,12 @@ export function AddEntryModal() {
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [anilistMediaId, setAnilistMediaId] = useState<number | null>(null);
+
+  // AniList search state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<AniListSearchResult[]>([]);
 
   const { addMedia, activeMediaType } = useMediaStore();
 
@@ -49,6 +58,7 @@ export function AddEntryModal() {
     setOpen(isOpen);
     if (isOpen) {
       setMediaType(activeMediaType);
+      resetForm();
     }
   };
 
@@ -64,6 +74,7 @@ export function AddEntryModal() {
       total: total || null,
       coverImage: coverImage || null,
       notes: notes.trim() || null,
+      anilistMediaId: anilistMediaId,
     });
 
     setIsSubmitting(false);
@@ -85,11 +96,51 @@ export function AddEntryModal() {
     setTotal(12);
     setCoverImage(null);
     setNotes("");
+    setAnilistMediaId(null);
+    setSearchTerm("");
+    setSearchResults([]);
   };
 
   const getProgressLabel = () => {
     if (mediaType === "anime") return "Episodes";
     return "Chapters";
+  };
+
+  // AniList search — debounced manually with a simple timeout
+  const handleAniListSearch = useCallback(
+    async (term: string) => {
+      setSearchTerm(term);
+      if (term.trim().length < 2) {
+        setSearchResults([]);
+        return;
+      }
+      setSearching(true);
+      try {
+        const result = await searchAniList(term.trim(), localTypeToAnilist(mediaType));
+        setSearchResults(result.success && result.data ? result.data : []);
+      } catch (err) {
+        // AniList search is best-effort; don't block manual entry
+        console.error("AniList search failed:", err);
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    },
+    [mediaType],
+  );
+
+  // Prefill the form from an AniList search result
+  const selectSearchResult = (r: AniListSearchResult) => {
+    setTitle(pickTitle(r));
+    setAnilistMediaId(r.id);
+    setCoverImage(r.coverImage.large || r.coverImage.medium || null);
+    if (mediaType === "anime" && r.episodes) {
+      setTotal(r.episodes);
+    } else if (mediaType === "manga" && r.chapters) {
+      setTotal(r.chapters);
+    }
+    setSearchTerm(pickTitle(r));
+    setSearchResults([]);
   };
 
   return (
@@ -130,10 +181,70 @@ export function AddEntryModal() {
               <Label htmlFor="title" className="">
                 Title
               </Label>
+              {/* AniList search prefill */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder={`Search AniList ${mediaType} to autofill...`}
+                  className="pl-9 mb-2"
+                  value={searchTerm}
+                  onChange={(e) => handleAniListSearch(e.target.value)}
+                  disabled={isSubmitting}
+                />
+                {searching && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-4 animate-spin text-muted-foreground" />
+                )}
+                {searchResults.length > 0 && (
+                  <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-64 overflow-y-auto">
+                    {searchResults.map((r) => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => selectSearchResult(r)}
+                        className="flex w-full items-center gap-3 p-2 text-left hover:bg-accent transition-colors"
+                      >
+                        {r.coverImage.medium && (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={r.coverImage.medium}
+                            alt=""
+                            className="h-12 w-9 rounded object-cover flex-shrink-0"
+                          />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">
+                            {pickTitle(r)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {mediaType === "anime"
+                              ? r.episodes
+                                ? `${r.episodes} eps`
+                                : "eps unknown"
+                              : r.chapters
+                                ? `${r.chapters} ch`
+                                : "ch unknown"}
+                            {r.averageScore ? ` · ${r.averageScore}%` : ""}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {anilistMediaId && (
+                <p className="text-xs text-green-600 mt-1">
+                  ✓ Linked to AniList (will sync)
+                </p>
+              )}
               <Input
                 id="title"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  // Editing title manually detaches from AniList link if it
+                  // came from search
+                  if (anilistMediaId) setAnilistMediaId(null);
+                }}
                 className="flex-1 min-w-full"
                 required
                 disabled={isSubmitting}
