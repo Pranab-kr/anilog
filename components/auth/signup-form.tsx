@@ -25,7 +25,6 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
-import { BottomGradient } from "../signup-form-demo";
 
 export function SignupForm() {
   const router = useRouter();
@@ -84,7 +83,9 @@ export function SignupForm() {
     <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
+          <CardTitle className="text-2xl font-bold">
+            Create an account
+          </CardTitle>
           <CardDescription>
             Enter your details below to create your account
           </CardDescription>
@@ -97,7 +98,7 @@ export function SignupForm() {
           )}
 
           <Button
-            variant="outline"
+            variant="default"
             className="w-full"
             onClick={handleGoogleSignup}
             disabled={isSubmitting}
@@ -177,7 +178,9 @@ export function SignupForm() {
               </Field>
 
               <Field data-invalid={!!errors.confirmPassword}>
-                <FieldLabel htmlFor="confirmPassword">Confirm Password</FieldLabel>
+                <FieldLabel htmlFor="confirmPassword">
+                  Confirm Password
+                </FieldLabel>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -187,7 +190,7 @@ export function SignupForm() {
                 />
                 <FieldError>{errors.confirmPassword?.message}</FieldError>
               </Field>
-{/*
+              {/*
 <button
           className="group/btn relative block h-10 w-full rounded-md bg-gradient-to-br from-black to-neutral-600 font-medium text-white shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:bg-zinc-800 dark:from-zinc-950 dark:to-zinc-900 dark:shadow-[0px_1px_0px_0px_#27272a_inset,0px_-1px_0px_0px_#27272a_inset]"
           type="submit"

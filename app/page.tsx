@@ -23,13 +23,22 @@ export default async function mainPage() {
             <h1 className="text-xl font-bold tracking-tight">AniLog</h1>
           </div>
           <nav className="hidden md:flex items-center gap-6">
-            <Link href="#" className="text-sm font-medium hover:text-primary transition-colors">
+            <Link
+              href="#"
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
               Library
             </Link>
-            <Link href="#" className="text-sm font-medium hover:text-primary transition-colors">
+            <Link
+              href="#"
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
               Social
             </Link>
-            <Link href="#" className="text-sm font-medium hover:text-primary transition-colors">
+            <Link
+              href="#"
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
               Settings
             </Link>
           </nav>
@@ -44,9 +53,12 @@ export default async function mainPage() {
 
       <main className="container mx-auto px-4 py-16">
         <section className="mb-12 flex flex-col items-center text-center">
-          <h2 className="text-4xl font-extrabold mb-4 text-balance">Track your cozy journey.</h2>
+          <h2 className="text-4xl font-extrabold mb-4 text-balance">
+            Track your cozy journey.
+          </h2>
           <p className="max-w-[600px] text-muted-foreground text-lg mb-8 text-pretty">
-            A relaxing space to keep track of your favorite anime, manga, and manhwa.
+            A relaxing space to keep track of your favorite anime, manga, and
+            manhwa.
           </p>
 
           <MediaTabs />
