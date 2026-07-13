@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Search, Loader2, RefreshCw } from "lucide-react"
 import { AniListConnectButton } from "@/components/anilist-connect-button"
 import { AniListImportModal } from "@/components/anilist-import-modal"
+import { ClearListButton } from "@/components/clear-list-button"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useMediaStore, statusDisplayMap } from "@/store/media-store"
@@ -252,6 +253,7 @@ export function MediaList() {
             </Button>
           )}
           <AniListImportModal onImported={() => fetchMedia()} />
+          <ClearListButton onCleared={() => fetchMedia()} />
         </div>
       </div>
 

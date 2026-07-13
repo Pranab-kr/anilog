@@ -374,3 +374,29 @@ async function enqueueMediaSync(userId: string, mediaId: string) {
     data: { userId, mediaId },
   });
 }
+
+// DELETE ALL - Wipe the current user's entire list (for a fresh AniList import)
+export async function deleteAllMedia(): Promise<{
+  success: boolean;
+  deleted?: number;
+  error?: string;
+}> {
+  try {
+    const user = await getCurrentUser();
+
+    const deleted = await db
+      .delete(media)
+      .where(eq(media.userId, user.id))
+      .returning({ id: media.id });
+
+    revalidatePath("/");
+
+    return { success: true, deleted: deleted.length };
+  } catch (error) {
+    console.error("Error deleting all media:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to clear list",
+    };
+  }
+}
