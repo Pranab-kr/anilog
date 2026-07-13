@@ -1,4 +1,3 @@
-import { create } from "zustand";
 import {
   getMediaPage,
   updateMedia,
@@ -7,8 +6,11 @@ import {
   type MediaItem,
   type MediaType,
   type MediaStatus,
+  type MediaSort,
   type UpdateMediaInput,
 } from "@/actions/media";
+
+import { create } from "zustand";
 
 interface MediaStore {
   media: MediaItem[];
@@ -21,10 +23,12 @@ interface MediaStore {
   activeMediaType: MediaType;
   searchQuery: string;
   activeFilter: "All" | MediaStatus;
+  activeSort: MediaSort;
 
   setActiveMediaType: (type: MediaType) => void;
   setSearchQuery: (query: string) => void;
   setActiveFilter: (filter: "All" | MediaStatus) => void;
+  setActiveSort: (sort: MediaSort) => void;
   setPage: (page: number) => void;
 
   fetchMedia: (options?: { type?: MediaType; page?: number }) => Promise<void>;
@@ -49,6 +53,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
   activeMediaType: "anime",
   searchQuery: "",
   activeFilter: "All",
+  activeSort: "updatedAt" as MediaSort,
 
   setActiveMediaType: (type) => {
     set({ activeMediaType: type, page: 1 });
@@ -62,6 +67,11 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
   setActiveFilter: (filter) => {
     set({ activeFilter: filter, page: 1 });
+    get().fetchMedia({ page: 1 });
+  },
+
+  setActiveSort: (sort) => {
+    set({ activeSort: sort, page: 1 });
     get().fetchMedia({ page: 1 });
   },
 
@@ -79,6 +89,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       type: options?.type ?? state.activeMediaType,
       status: state.activeFilter,
       search: state.searchQuery,
+      sort: state.activeSort,
       page: options?.page ?? state.page,
       pageSize: state.pageSize,
     });

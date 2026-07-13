@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { media } from "@/schema/media-schema";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { and, desc, eq, ilike, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, sql, type SQL } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { sendInngestEvent } from "@/lib/inngest/client";
 
@@ -12,6 +12,7 @@ import { sendInngestEvent } from "@/lib/inngest/client";
 export type MediaType = "anime" | "manga";
 export type MediaStatus = "watching" | "rewatching" | "completed" | "paused" | "dropped" | "plan";
 export type AniListSyncStatus = "idle" | "pending" | "syncing" | "synced" | "failed";
+export type MediaSort = "title" | "score" | "progress" | "updatedAt" | "createdAt";
 
 export interface MediaItem {
   id: string;
@@ -51,6 +52,7 @@ export interface MediaPageInput {
   search?: string;
   page?: number;
   pageSize?: number;
+  sort?: MediaSort;
 }
 
 export interface MediaPage {
@@ -107,11 +109,21 @@ export async function getMediaPage(input: MediaPageInput = {}): Promise<{
       .from(media)
       .where(where);
 
+    const sortCol = (() => {
+      switch (input.sort) {
+        case "title":     return [asc(media.title)];
+        case "score":     return [desc(sql`${media.rating} NULLS LAST`), desc(media.updatedAt)];
+        case "progress":  return [desc(media.progress), desc(media.updatedAt)];
+        case "createdAt": return [desc(media.createdAt)];
+        default:          return [desc(media.updatedAt), desc(media.createdAt)]; // "updatedAt"
+      }
+    })();
+
     const items = await db
       .select()
       .from(media)
       .where(where)
-      .orderBy(desc(media.updatedAt), desc(media.createdAt))
+      .orderBy(...sortCol)
       .limit(pageSize)
       .offset(offset);
 

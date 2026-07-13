@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { useMediaStore, statusDisplayMap } from "@/store/media-store"
 import { useAniList } from "@/hooks/use-anilist"
 import { toast } from "sonner"
-import type { MediaStatus } from "@/actions/media"
+import type { MediaStatus, MediaSort } from "@/actions/media"
 import {
   Pagination,
   PaginationContent,
@@ -20,10 +20,25 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ArrowUpDown, Check } from "lucide-react"
 
 type FilterStatus = "All" | MediaStatus
 
 const filterOptions: FilterStatus[] = ["All", "watching", "rewatching", "completed", "paused", "dropped", "plan"]
+
+const sortOptions: { value: MediaSort; label: string }[] = [
+  { value: "title",     label: "Title" },
+  { value: "score",     label: "Score" },
+  { value: "progress",  label: "Progress" },
+  { value: "updatedAt", label: "Last Updated" },
+  { value: "createdAt", label: "Last Added" },
+]
 
 // ─── Shared pagination strip ──────────────────────────────────────────────────
 function PaginationStrip({
@@ -88,6 +103,8 @@ export function MediaList() {
     setSearchQuery,
     activeFilter,
     setActiveFilter,
+    activeSort,
+    setActiveSort,
     total,
     page,
     totalPages,
@@ -192,6 +209,31 @@ export function MediaList() {
           />
         </div>
         <div className="flex items-center gap-2">
+          {/* Sort dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <ArrowUpDown className="size-3.5" />
+                {sortOptions.find((o) => o.value === activeSort)?.label ?? "Sort"}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              {sortOptions.map((opt) => (
+                <DropdownMenuItem
+                  key={opt.value}
+                  onClick={() => setActiveSort(opt.value)}
+                  className={cn(
+                    "flex items-center justify-between cursor-pointer",
+                    activeSort === opt.value && "text-primary font-medium"
+                  )}
+                >
+                  {opt.label}
+                  {activeSort === opt.value && <Check className="size-3.5" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <AniListConnectButton />
           {connection?.connected && (
             <Button
