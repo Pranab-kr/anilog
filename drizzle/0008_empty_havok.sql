@@ -1,0 +1,1 @@
+ALTER TABLE "media" ADD COLUMN "anilist_updated_at" timestamp with time zone;

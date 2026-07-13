@@ -29,6 +29,7 @@ export interface AniListListEntry {
   progress: number;
   score: number;
   notes: string | null;
+  updatedAt: number | null; // Unix seconds — AniList's own "last updated" timestamp
   startedAt: { year: number | null; month: number | null; day: number | null };
   completedAt: { year: number | null; month: number | null; day: number | null };
   media: {

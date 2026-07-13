@@ -23,11 +23,12 @@ interface NormalizedAniListEntry {
   status: "watching" | "rewatching" | "completed" | "paused" | "dropped" | "plan";
   progress: number;
   total: number | null;
-  rating: number | null; // 0.0–10.0
+  rating: number | null;
   coverImage: string | null;
   notes: string | null;
   anilistMediaId: number;
   anilistListEntryId: number;
+  anilistUpdatedAt: Date | null; // AniList's own per-entry updatedAt
 }
 
 export interface ImportResult {
@@ -93,6 +94,7 @@ export async function importForAniListUser(
             notes: entry.notes ?? null,
             anilistMediaId: entry.mediaId,
             anilistListEntryId: entry.id,
+            anilistUpdatedAt: entry.updatedAt ? new Date(entry.updatedAt * 1000) : null,
           });
         }
       }
@@ -199,6 +201,7 @@ async function importEntriesForType(
           coverImage: entry.coverImage,
           notes: entry.notes,
           anilistListEntryId: entry.anilistListEntryId,
+          anilistUpdatedAt: entry.anilistUpdatedAt,
           anilistSyncStatus: "synced",
           anilistSyncError: null,
           anilistSyncedAt: now,
@@ -223,6 +226,7 @@ async function importEntriesForType(
           coverImage: entry.coverImage || manualEntry.coverImage,
           anilistMediaId: entry.anilistMediaId,
           anilistListEntryId: entry.anilistListEntryId,
+          anilistUpdatedAt: entry.anilistUpdatedAt,
           anilistSyncStatus: "synced",
           anilistSyncError: null,
           anilistSyncedAt: now,
@@ -245,6 +249,7 @@ async function importEntriesForType(
       userId: appUserId,
       anilistMediaId: entry.anilistMediaId,
       anilistListEntryId: entry.anilistListEntryId,
+      anilistUpdatedAt: entry.anilistUpdatedAt,
       anilistSyncStatus: "synced",
       anilistSyncedAt: now,
     });

@@ -30,6 +30,7 @@ export interface MediaItem {
   anilistSyncStatus: AniListSyncStatus;
   anilistSyncError: string | null;
   anilistSyncedAt: Date | null;
+  anilistUpdatedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -115,7 +116,11 @@ export async function getMediaPage(input: MediaPageInput = {}): Promise<{
         case "score":     return [sql`${media.rating} DESC NULLS LAST`, desc(media.updatedAt)];
         case "progress":  return [desc(media.progress), desc(media.updatedAt)];
         case "createdAt": return [desc(media.createdAt)];
-        default:          return [desc(media.updatedAt), desc(media.createdAt)]; // "updatedAt"
+        // "Last Updated": prefer AniList's own per-entry timestamp; fall back to local updatedAt
+        default:          return [
+          sql`COALESCE(${media.anilistUpdatedAt}, ${media.updatedAt}) DESC`,
+          desc(media.createdAt),
+        ];
       }
     })();
 

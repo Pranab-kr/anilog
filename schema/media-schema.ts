@@ -89,6 +89,9 @@ export const media = pgTable("media", {
     .notNull(),
   anilistSyncError: text("anilist_sync_error"),
   anilistSyncedAt: timestamp("anilist_synced_at", { withTimezone: true }),
+  // AniList's own updatedAt for this list entry (Unix seconds → stored as timestamp).
+  // Used to replicate AniList's "Last Updated" sort order.
+  anilistUpdatedAt: timestamp("anilist_updated_at", { withTimezone: true }),
 
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

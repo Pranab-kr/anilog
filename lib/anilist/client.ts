@@ -133,6 +133,7 @@ const MEDIA_FRAGMENT = `
   progress
   score(format: POINT_10)
   notes
+  updatedAt
   startedAt { year month day }
   completedAt { year month day }
   media {
