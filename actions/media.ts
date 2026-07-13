@@ -112,7 +112,7 @@ export async function getMediaPage(input: MediaPageInput = {}): Promise<{
     const sortCol = (() => {
       switch (input.sort) {
         case "title":     return [asc(media.title)];
-        case "score":     return [desc(sql`${media.rating} NULLS LAST`), desc(media.updatedAt)];
+        case "score":     return [sql`${media.rating} DESC NULLS LAST`, desc(media.updatedAt)];
         case "progress":  return [desc(media.progress), desc(media.updatedAt)];
         case "createdAt": return [desc(media.createdAt)];
         default:          return [desc(media.updatedAt), desc(media.createdAt)]; // "updatedAt"
