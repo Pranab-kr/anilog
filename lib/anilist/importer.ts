@@ -20,9 +20,10 @@ type MediaUpdate = Partial<MediaInsert>;
 interface NormalizedAniListEntry {
   title: string;
   type: "anime" | "manga";
-  status: "watching" | "completed" | "plan";
+  status: "watching" | "rewatching" | "completed" | "paused" | "dropped" | "plan";
   progress: number;
   total: number | null;
+  rating: number | null; // 0.0–10.0
   coverImage: string | null;
   notes: string | null;
   anilistMediaId: number;
@@ -87,6 +88,7 @@ export async function importForAniListUser(
             status: anilistStatusToLocal(entry.status),
             progress: entry.progress,
             total: pickTotal(entry),
+            rating: entry.score > 0 ? entry.score : null,
             coverImage: pickCover(entry.media),
             notes: entry.notes ?? null,
             anilistMediaId: entry.mediaId,
@@ -193,6 +195,7 @@ async function importEntriesForType(
           status: entry.status,
           progress: entry.progress,
           total: entry.total,
+          rating: entry.rating,
           coverImage: entry.coverImage,
           notes: entry.notes,
           anilistListEntryId: entry.anilistListEntryId,
@@ -216,6 +219,7 @@ async function importEntriesForType(
           status: entry.status,
           progress: entry.progress,
           total: entry.total ?? manualEntry.total,
+          rating: entry.rating,
           coverImage: entry.coverImage || manualEntry.coverImage,
           anilistMediaId: entry.anilistMediaId,
           anilistListEntryId: entry.anilistListEntryId,
@@ -235,6 +239,7 @@ async function importEntriesForType(
       status: entry.status,
       progress: entry.progress,
       total: entry.total,
+      rating: entry.rating,
       coverImage: entry.coverImage,
       notes: entry.notes,
       userId: appUserId,

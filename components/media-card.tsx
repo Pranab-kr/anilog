@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { MoreVertical, Edit2, Trash2, Plus, Minus, Loader2 } from "lucide-react"
+import { MoreVertical, Edit2, Trash2, Plus, Minus, Loader2, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -30,7 +30,10 @@ interface MediaCardProps {
 
 const statusColors: Record<MediaStatus, string> = {
   watching: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  rewatching: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
   completed: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  paused: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
+  dropped: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
   plan: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
 }
 
@@ -147,6 +150,13 @@ export function MediaCard({ item }: MediaCardProps) {
                 </div>
               </div>
               <Progress value={progressPercentage} className="h-1.5" />
+              {item.rating != null && (
+                <div className="flex items-center gap-1 text-xs text-yellow-500">
+                  <Star className="size-3 fill-yellow-500" />
+                  <span className="font-medium">{item.rating.toFixed(1)}</span>
+                  <span className="text-muted-foreground">/10</span>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>

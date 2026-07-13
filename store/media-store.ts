@@ -132,7 +132,9 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
                   ? "plan"
                   : m.total && newProgress >= m.total
                   ? "completed"
-                  : "watching",
+                  : m.status === "plan"
+                  ? "watching"
+                  : m.status,
             }
           : m
       ),
@@ -192,7 +194,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 // Status display mapping
 export const statusDisplayMap: Record<MediaStatus, string> = {
   watching: "Watching",
+  rewatching: "Rewatching",
   completed: "Completed",
+  paused: "Paused",
+  dropped: "Dropped",
   plan: "Plan to Watch",
 };
 
@@ -200,6 +205,9 @@ export const statusDisplayMap: Record<MediaStatus, string> = {
 export const filterToStatus: Record<string, MediaStatus | undefined> = {
   All: undefined,
   Watching: "watching",
+  Rewatching: "rewatching",
   Completed: "completed",
+  Paused: "paused",
+  Dropped: "dropped",
   "Plan to Watch": "plan",
 };

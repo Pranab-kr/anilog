@@ -10,7 +10,7 @@ import { sendInngestEvent } from "@/lib/inngest/client";
 
 // Types
 export type MediaType = "anime" | "manga";
-export type MediaStatus = "watching" | "completed" | "plan";
+export type MediaStatus = "watching" | "rewatching" | "completed" | "paused" | "dropped" | "plan";
 export type AniListSyncStatus = "idle" | "pending" | "syncing" | "synced" | "failed";
 
 export interface MediaItem {
@@ -21,6 +21,7 @@ export interface MediaItem {
   coverImage: string | null;
   progress: number;
   total: number | null;
+  rating: number | null; // 0.0–10.0
   notes: string | null;
   userId: string;
   anilistMediaId: number | null;
@@ -40,6 +41,7 @@ export interface UpdateMediaInput {
   coverImage?: string | null;
   progress?: number;
   total?: number | null;
+  rating?: number | null; // 0.0–10.0
   notes?: string | null;
 }
 
@@ -207,6 +209,7 @@ export async function updateMedia(input: UpdateMediaInput): Promise<{ success: b
     if (input.coverImage !== undefined) updateData.coverImage = input.coverImage;
     if (input.progress !== undefined) updateData.progress = input.progress;
     if (input.total !== undefined) updateData.total = input.total;
+    if (input.rating !== undefined) updateData.rating = input.rating;
     if (input.notes !== undefined) updateData.notes = input.notes;
     if (existing.anilistMediaId) {
       updateData.anilistSyncStatus = "pending";
@@ -265,7 +268,8 @@ export async function updateMediaProgress(
       newStatus = "plan";
     } else if (existing.total && progress >= existing.total) {
       newStatus = "completed";
-    } else if (progress > 0) {
+    } else if (progress > 0 && existing.status === "plan") {
+      // Only bump plan → watching; preserve watching/paused/dropped/rewatching
       newStatus = "watching";
     }
 

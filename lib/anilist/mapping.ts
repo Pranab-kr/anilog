@@ -17,11 +17,11 @@ import type { MediaStatus, MediaType } from "@/actions/media";
 
 const TO_LOCAL: Record<string, MediaStatus> = {
   CURRENT: "watching",
-  REPEATING: "completed",
+  REPEATING: "rewatching",
   COMPLETED: "completed",
+  PAUSED: "paused",
+  DROPPED: "dropped",
   PLANNING: "plan",
-  PAUSED: "watching",
-  DROPPED: "plan",
 };
 
 /** Map an AniList MediaListStatus to our local MediaStatus. */
@@ -32,7 +32,10 @@ export function anilistStatusToLocal(status: string | null): MediaStatus {
 
 const TO_ANILIST: Record<MediaStatus, AniListStatus> = {
   watching: "CURRENT",
+  rewatching: "REPEATING",
   completed: "COMPLETED",
+  paused: "PAUSED",
+  dropped: "DROPPED",
   plan: "PLANNING",
 };
 

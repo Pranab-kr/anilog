@@ -9,7 +9,7 @@ import {
   importPublicListForUser,
 } from "@/lib/anilist/importer";
 
-type MediaStatus = "watching" | "completed" | "plan";
+import type { MediaStatus } from "@/actions/media";
 
 export const syncMediaToAniList = inngest.createFunction(
   {
@@ -75,6 +75,7 @@ export const syncMediaToAniList = inngest.createFunction(
             mediaId: row.mediaRow.anilistMediaId as number,
             status: localStatusToAnilist(row.mediaRow.status as MediaStatus),
             progress: row.mediaRow.progress,
+            score: row.mediaRow.rating ?? undefined,
             notes: row.mediaRow.notes ?? undefined,
           },
           row.accessToken,

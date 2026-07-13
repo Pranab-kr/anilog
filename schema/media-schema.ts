@@ -4,6 +4,7 @@ import {
   varchar,
   text,
   integer,
+  real,
   timestamp,
   pgEnum,
   index,
@@ -25,7 +26,10 @@ export const mediaTypeEnum = pgEnum("media_type", ["anime", "manga"]);
 // Watch / Read status
 export const mediaStatusEnum = pgEnum("media_status", [
   "watching",
+  "rewatching",
   "completed",
+  "paused",
+  "dropped",
   "plan",
 ]);
 
@@ -69,6 +73,8 @@ export const media = pgTable("media", {
   total: integer("total"), // total episodes / chapters (nullable)
 
   notes: text("notes"), // optional personal notes
+
+  rating: real("rating"), // user score 0.0–10.0 (matches AniList POINT_10 format)
 
   userId: text("user_id")
     .notNull()

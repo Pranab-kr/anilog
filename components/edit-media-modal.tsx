@@ -21,6 +21,7 @@ import { ImageUploader } from "@/components/image-uploader"
 import { useMediaStore, statusDisplayMap } from "@/store/media-store"
 import { toast } from "sonner"
 import type { MediaItem, MediaStatus, MediaType } from "@/actions/media"
+import { Star } from "lucide-react"
 
 interface EditMediaModalProps {
   item: MediaItem
@@ -33,7 +34,10 @@ export function EditMediaModal({ item, open, onOpenChange }: EditMediaModalProps
   const [mediaType, setMediaType] = useState<MediaType>(item.type)
   const [status, setStatus] = useState<MediaStatus>(item.status)
   const [progress, setProgress] = useState(item.progress)
-  const [total, setTotal] = useState(item.total || 12)
+  const [total, setTotal] = useState(item.total || 0)
+  const [rating, setRating] = useState<string>(
+    item.rating != null ? String(item.rating) : ""
+  )
   const [coverImage, setCoverImage] = useState<string | null>(item.coverImage)
   const [notes, setNotes] = useState(item.notes || "")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -47,7 +51,8 @@ export function EditMediaModal({ item, open, onOpenChange }: EditMediaModalProps
       setMediaType(item.type)
       setStatus(item.status)
       setProgress(item.progress)
-      setTotal(item.total || 12)
+      setTotal(item.total || 0)
+      setRating(item.rating != null ? String(item.rating) : "")
       setCoverImage(item.coverImage)
       setNotes(item.notes || "")
     }
@@ -57,6 +62,14 @@ export function EditMediaModal({ item, open, onOpenChange }: EditMediaModalProps
     e.preventDefault()
     setIsSubmitting(true)
 
+    // Parse and clamp rating
+    const parsedRating = rating.trim() === "" ? null : Math.min(10, Math.max(0, parseFloat(rating)))
+    if (rating.trim() !== "" && isNaN(parsedRating!)) {
+      toast.error("Rating must be a number between 0 and 10")
+      setIsSubmitting(false)
+      return
+    }
+
     const result = await editMedia({
       id: item.id,
       title,
@@ -64,6 +77,7 @@ export function EditMediaModal({ item, open, onOpenChange }: EditMediaModalProps
       status,
       progress,
       total: total || null,
+      rating: parsedRating,
       coverImage: coverImage || null,
       notes: notes.trim() || null,
     })
@@ -71,25 +85,22 @@ export function EditMediaModal({ item, open, onOpenChange }: EditMediaModalProps
     setIsSubmitting(false)
 
     if (result.success) {
-      toast.success("Media updated successfully!")
+      toast.success("Entry updated successfully!")
       onOpenChange(false)
       // Refresh if type changed
       if (mediaType !== item.type) {
         fetchMedia({ type: activeMediaType })
       }
     } else {
-      toast.error(result.error || "Failed to update media")
+      toast.error(result.error || "Failed to update entry")
     }
   }
 
-  const getProgressLabel = () => {
-    if (mediaType === "anime") return "Episodes"
-    return "Chapters"
-  }
+  const progressLabel = mediaType === "anime" ? "Episodes" : "Chapters"
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Edit Entry</DialogTitle>
@@ -97,6 +108,7 @@ export function EditMediaModal({ item, open, onOpenChange }: EditMediaModalProps
               Update the details of your entry.
             </DialogDescription>
           </DialogHeader>
+
           <div className="grid gap-4 py-4">
             {/* Media Type Tabs */}
             <div className="space-y-2">
@@ -109,43 +121,45 @@ export function EditMediaModal({ item, open, onOpenChange }: EditMediaModalProps
               </Tabs>
             </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-title" className="text-right">
-                Title
-              </Label>
+            {/* Title — full width, handles long titles */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-title">Title</Label>
               <Input
                 id="edit-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="col-span-3"
+                className="w-full"
                 required
                 disabled={isSubmitting}
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-status" className="text-right">
-                Status
-              </Label>
-              <Select 
-                value={status} 
+
+            {/* Status */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-status">Status</Label>
+              <Select
+                value={status}
                 onValueChange={(v) => setStatus(v as MediaStatus)}
                 disabled={isSubmitting}
               >
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger id="edit-status" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="watching">{statusDisplayMap.watching}</SelectItem>
+                  <SelectItem value="rewatching">{statusDisplayMap.rewatching}</SelectItem>
                   <SelectItem value="completed">{statusDisplayMap.completed}</SelectItem>
+                  <SelectItem value="paused">{statusDisplayMap.paused}</SelectItem>
+                  <SelectItem value="dropped">{statusDisplayMap.dropped}</SelectItem>
                   <SelectItem value="plan">{statusDisplayMap.plan}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-progress" className="text-right">
-                {getProgressLabel()}
-              </Label>
-              <div className="col-span-3 flex items-center gap-2">
+
+            {/* Progress */}
+            <div className="space-y-2">
+              <Label>{progressLabel}</Label>
+              <div className="flex items-center gap-2">
                 <Input
                   id="edit-progress"
                   type="number"
@@ -153,6 +167,7 @@ export function EditMediaModal({ item, open, onOpenChange }: EditMediaModalProps
                   onChange={(e) => setProgress(Number(e.target.value))}
                   min={0}
                   max={total || undefined}
+                  className="flex-1"
                   disabled={isSubmitting}
                 />
                 <span className="text-muted-foreground">/</span>
@@ -161,41 +176,63 @@ export function EditMediaModal({ item, open, onOpenChange }: EditMediaModalProps
                   type="number"
                   value={total}
                   onChange={(e) => setTotal(Number(e.target.value))}
-                  min={1}
+                  min={0}
+                  placeholder="?"
+                  className="flex-1"
                   disabled={isSubmitting}
                 />
               </div>
             </div>
 
-            {/* Notes Section */}
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="edit-notes" className="text-right pt-2">
-                Notes
+            {/* Rating */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-rating" className="flex items-center gap-1.5">
+                <Star className="size-3.5 text-yellow-500 fill-yellow-500" />
+                Rating (0 – 10)
               </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="edit-rating"
+                  type="number"
+                  value={rating}
+                  onChange={(e) => setRating(e.target.value)}
+                  min={0}
+                  max={10}
+                  step={0.1}
+                  placeholder="e.g. 8.5"
+                  className="flex-1"
+                  disabled={isSubmitting}
+                />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">/ 10</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Synced with AniList score</p>
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-notes">Notes</Label>
               <Textarea
                 id="edit-notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="col-span-3"
+                className="w-full"
                 placeholder="Add personal notes (optional)"
                 rows={3}
                 disabled={isSubmitting}
               />
             </div>
-            
-            {/* Image Upload Section */}
+
+            {/* Cover Image */}
             <div className="space-y-3">
               <Label>Cover Image</Label>
-              <div className="space-y-3">
-                {/* UploadThing Image Uploader */}
-                <ImageUploader
-                  value={coverImage}
-                  onChange={setCoverImage}
-                  disabled={isSubmitting}
-                />
-              </div>
+              <ImageUploader
+                value={coverImage}
+                onChange={setCoverImage}
+                disabled={isSubmitting}
+              />
             </div>
           </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancel
