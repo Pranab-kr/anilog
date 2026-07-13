@@ -17,7 +17,7 @@ export function MediaTabs() {
 
   // Fetch media on initial mount
   useEffect(() => {
-    fetchMedia(activeMediaType);
+    fetchMedia({ type: activeMediaType });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTabChange = (value: string) => {

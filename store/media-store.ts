@@ -1,100 +1,109 @@
 import { create } from "zustand";
 import {
-  getMedia,
-  createMedia,
+  getMediaPage,
   updateMedia,
   updateMediaProgress,
   deleteMedia,
   type MediaItem,
   type MediaType,
   type MediaStatus,
-  type CreateMediaInput,
   type UpdateMediaInput,
 } from "@/actions/media";
 
 interface MediaStore {
-  // State
   media: MediaItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
   isLoading: boolean;
   error: string | null;
   activeMediaType: MediaType;
   searchQuery: string;
   activeFilter: "All" | MediaStatus;
 
-  // Actions
   setActiveMediaType: (type: MediaType) => void;
   setSearchQuery: (query: string) => void;
   setActiveFilter: (filter: "All" | MediaStatus) => void;
+  setPage: (page: number) => void;
 
-  // API Actions
-  fetchMedia: (type?: MediaType) => Promise<void>;
-  addMedia: (input: CreateMediaInput) => Promise<{ success: boolean; error?: string }>;
+  fetchMedia: (options?: { type?: MediaType; page?: number }) => Promise<void>;
   editMedia: (input: UpdateMediaInput) => Promise<{ success: boolean; error?: string }>;
   updateProgress: (id: string, delta: number) => Promise<{ success: boolean; error?: string }>;
   removeMedia: (id: string) => Promise<{ success: boolean; error?: string }>;
 
-  // Computed
   getFilteredMedia: () => MediaItem[];
 }
 
+const progressCommitTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const PROGRESS_COMMIT_DELAY_MS = 700;
+
 export const useMediaStore = create<MediaStore>((set, get) => ({
-  // Initial State
   media: [],
+  total: 0,
+  page: 1,
+  pageSize: 24,
+  totalPages: 1,
   isLoading: false,
   error: null,
   activeMediaType: "anime",
   searchQuery: "",
   activeFilter: "All",
 
-  // Simple setters
   setActiveMediaType: (type) => {
-    set({ activeMediaType: type });
-    get().fetchMedia(type);
+    set({ activeMediaType: type, page: 1 });
+    get().fetchMedia({ type, page: 1 });
   },
 
-  setSearchQuery: (query) => set({ searchQuery: query }),
+  setSearchQuery: (query) => {
+    set({ searchQuery: query, page: 1 });
+    get().fetchMedia({ page: 1 });
+  },
 
-  setActiveFilter: (filter) => set({ activeFilter: filter }),
+  setActiveFilter: (filter) => {
+    set({ activeFilter: filter, page: 1 });
+    get().fetchMedia({ page: 1 });
+  },
 
-  // Fetch media from server
-  fetchMedia: async (type) => {
+  setPage: (page) => {
+    const nextPage = Math.min(Math.max(1, page), get().totalPages);
+    set({ page: nextPage });
+    get().fetchMedia({ page: nextPage });
+  },
+
+  fetchMedia: async (options) => {
     set({ isLoading: true, error: null });
 
-    const mediaType = type || get().activeMediaType;
-    const result = await getMedia(mediaType);
+    const state = get();
+    const result = await getMediaPage({
+      type: options?.type ?? state.activeMediaType,
+      status: state.activeFilter,
+      search: state.searchQuery,
+      page: options?.page ?? state.page,
+      pageSize: state.pageSize,
+    });
 
     if (result.success && result.data) {
-      set({ media: result.data, isLoading: false });
+      set({
+        media: result.data.items,
+        total: result.data.total,
+        page: result.data.page,
+        pageSize: result.data.pageSize,
+        totalPages: result.data.totalPages,
+        isLoading: false,
+      });
     } else {
       set({ error: result.error || "Failed to fetch media", isLoading: false });
     }
   },
 
-  // Add new media
-  addMedia: async (input) => {
-    set({ isLoading: true, error: null });
-
-    const result = await createMedia(input);
-
-    if (result.success && result.data) {
-      // Always refetch to ensure data consistency
-      await get().fetchMedia(get().activeMediaType);
-      return { success: true };
-    } else {
-      set({ error: result.error || "Failed to add media", isLoading: false });
-      return { success: false, error: result.error };
-    }
-  },
-
-  // Edit existing media
   editMedia: async (input) => {
     set({ isLoading: true, error: null });
 
     const result = await updateMedia(input);
 
     if (result.success && result.data) {
-      // Refetch to ensure data is in sync (handles type changes too)
-      await get().fetchMedia(get().activeMediaType);
+      await get().fetchMedia();
       return { success: true };
     } else {
       set({ error: result.error || "Failed to update media", isLoading: false });
@@ -112,7 +121,6 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       return { success: false, error: "Progress cannot exceed total" };
     }
 
-    // Optimistic update
     set((state) => ({
       media: state.media.map((m) =>
         m.id === id
@@ -130,20 +138,29 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       ),
     }));
 
-    const result = await updateMediaProgress(id, newProgress);
-
-    if (!result.success) {
-      // Revert on failure
-      set((state) => ({
-        media: state.media.map((m) => (m.id === id ? item : m)),
-      }));
-      return { success: false, error: result.error };
+    const existingTimer = progressCommitTimers.get(id);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
     }
+
+    progressCommitTimers.set(
+      id,
+      setTimeout(async () => {
+        progressCommitTimers.delete(id);
+        const latest = get().media.find((m) => m.id === id);
+        if (!latest) return;
+
+        const result = await updateMediaProgress(id, latest.progress);
+        if (!result.success) {
+          set({ error: result.error || "Failed to update progress" });
+          await get().fetchMedia();
+        }
+      }, PROGRESS_COMMIT_DELAY_MS),
+    );
 
     return { success: true };
   },
 
-  // Delete media
   removeMedia: async (id) => {
     const previousMedia = get().media;
 
@@ -155,26 +172,20 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     const result = await deleteMedia(id);
 
     if (!result.success) {
-      // Revert on failure
       set({ media: previousMedia });
       return { success: false, error: result.error };
     }
 
+    const { page, total, pageSize } = get();
+    const totalAfterDelete = Math.max(0, total - 1);
+    const maxPage = Math.max(1, Math.ceil(totalAfterDelete / pageSize));
+    await get().fetchMedia({ page: Math.min(page, maxPage) });
+
     return { success: true };
   },
 
-  // Get filtered media based on search and filter
   getFilteredMedia: () => {
-    const { media, searchQuery, activeFilter } = get();
-
-    return media.filter((item) => {
-      const matchesSearch = item.title
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-      const matchesFilter =
-        activeFilter === "All" || item.status === activeFilter;
-      return matchesSearch && matchesFilter;
-    });
+    return get().media;
   },
 }));
 

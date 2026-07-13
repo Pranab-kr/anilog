@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
-import { Link2, Unlink, CheckCircle2, AlertCircle } from "lucide-react";
+import { Link2, Unlink, CheckCircle2 } from "lucide-react";
 import { useAniList } from "@/hooks/use-anilist";
 import { toast } from "sonner";
 

@@ -1,10 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { MediaCard } from "@/components/media-card"
 import { Input } from "@/components/ui/input"
 import { Search, Loader2, RefreshCw } from "lucide-react"
-import { AddEntryModal } from "@/components/add-entry-modal"
 import { AniListConnectButton } from "@/components/anilist-connect-button"
 import { AniListImportModal } from "@/components/anilist-import-modal"
 import { Button } from "@/components/ui/button"
@@ -12,7 +11,15 @@ import { cn } from "@/lib/utils"
 import { useMediaStore, statusDisplayMap } from "@/store/media-store"
 import { useAniList } from "@/hooks/use-anilist"
 import { toast } from "sonner"
-import type { MediaStatus, MediaItem } from "@/actions/media"
+import type { MediaStatus } from "@/actions/media"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 type FilterStatus = "All" | MediaStatus
 
@@ -26,30 +33,77 @@ export function MediaList() {
     setSearchQuery,
     activeFilter,
     setActiveFilter,
+    total,
+    page,
+    totalPages,
+    setPage,
     fetchMedia,
     getFilteredMedia,
   } = useMediaStore()
 
   const { connection, loading: anilistLoading } = useAniList()
   const [syncing, setSyncing] = useState(false)
+  const autoSyncedAfterConnect = useRef(false)
 
-  const filteredItems = getFilteredMedia()
+  const pageItems = getFilteredMedia()
 
-  const handleSyncFromAniList = async () => {
+  const syncFromAniListToLibrary = useCallback(async () => {
+    if (syncing) return
+
     setSyncing(true)
-    const { syncFromAniList } = await import("@/actions/anilist-import")
+    const { syncFromAniList, getAniListImportJob } = await import("@/actions/anilist-import")
     const result = await syncFromAniList()
-    setSyncing(false)
 
     if (result.success && result.data) {
-      toast.success(
-        `Synced: ${result.data.imported} new, ${result.data.skipped} updated`,
-      )
-      await fetchMedia()
+      toast.success("AniList sync queued")
+      for (let attempt = 0; attempt < 200; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 1500))
+        const job = await getAniListImportJob(result.data.jobId)
+        if (!job.success || !job.data) continue
+
+        if (job.data.status === "completed") {
+          toast.success(
+            `Synced: ${job.data.imported} new, ${job.data.updated} updated`,
+          )
+          await fetchMedia()
+          setSyncing(false)
+          return
+        }
+
+        if (job.data.status === "failed") {
+          toast.error(job.data.error ?? "Sync failed")
+          setSyncing(false)
+          return
+        }
+      }
+
+      toast.warning("Sync is still running in the background")
     } else {
       toast.error(result.error ?? "Sync failed")
     }
-  }
+
+    setSyncing(false)
+  }, [fetchMedia, syncing])
+
+  useEffect(() => {
+    if (autoSyncedAfterConnect.current || anilistLoading || !connection?.connected) {
+      return
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("anilist") !== "connected") {
+      return
+    }
+
+    autoSyncedAfterConnect.current = true
+    params.delete("anilist")
+    params.delete("user")
+    const query = params.toString()
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`
+    window.history.replaceState({}, "", nextUrl)
+
+    void syncFromAniListToLibrary()
+  }, [anilistLoading, connection?.connected, syncFromAniListToLibrary])
 
   const getFilterLabel = (filter: FilterStatus): string => {
     if (filter === "All") return "All"
@@ -88,7 +142,7 @@ export function MediaList() {
               variant="outline"
               size="sm"
               className="gap-1.5"
-              onClick={handleSyncFromAniList}
+              onClick={syncFromAniListToLibrary}
               disabled={syncing || anilistLoading}
             >
               {syncing ? (
@@ -99,8 +153,7 @@ export function MediaList() {
               Sync
             </Button>
           )}
-          <AniListImportModal />
-          <AddEntryModal />
+          <AniListImportModal onImported={() => fetchMedia()} />
         </div>
       </div>
 
@@ -119,16 +172,12 @@ export function MediaList() {
             )}
           >
             {getFilterLabel(filter)}
-            <span className={cn(
-              "ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold",
-              activeFilter === filter
-                ? "bg-transparent text-primary-foreground"
-                : "bg-transparent text-muted-foreground"
-            )}>
-              {filter === "All" ? filteredItems.length : useMediaStore.getState().media.filter((item: MediaItem) => item.status === filter).length}
-            </span>
           </Button>
         ))}
+      </div>
+
+      <div className="mx-auto flex max-w-4xl items-center justify-center text-sm text-muted-foreground">
+        {total === 0 ? "No entries" : `${total} entr${total === 1 ? "y" : "ies"}`}
       </div>
 
       {isLoading ? (
@@ -138,15 +187,69 @@ export function MediaList() {
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {filteredItems.map((item) => (
+            {pageItems.map((item) => (
               <MediaCard key={item.id} item={item} />
             ))}
           </div>
 
-          {filteredItems.length === 0 && (
+          {pageItems.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
               {searchQuery ? `No matches found for "${searchQuery}"` : "No items in this category"}
             </div>
+          )}
+
+          {totalPages > 1 && (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    aria-disabled={page <= 1}
+                    className={cn(page <= 1 && "pointer-events-none opacity-50")}
+                    onClick={(event) => {
+                      event.preventDefault()
+                      setPage(page - 1)
+                    }}
+                  />
+                </PaginationItem>
+                {Array.from({ length: totalPages }, (_, index) => index + 1)
+                  .filter((pageNumber) => {
+                    return (
+                      pageNumber === 1 ||
+                      pageNumber === totalPages ||
+                      Math.abs(pageNumber - page) <= 1
+                    )
+                  })
+                  .map((pageNumber, index, visiblePages) => (
+                    <PaginationItem key={pageNumber}>
+                      {index > 0 && pageNumber - visiblePages[index - 1] > 1 ? (
+                        <span className="px-2 text-muted-foreground">...</span>
+                      ) : null}
+                      <PaginationLink
+                        href="#"
+                        isActive={pageNumber === page}
+                        onClick={(event) => {
+                          event.preventDefault()
+                          setPage(pageNumber)
+                        }}
+                      >
+                        {pageNumber}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    aria-disabled={page >= totalPages}
+                    className={cn(page >= totalPages && "pointer-events-none opacity-50")}
+                    onClick={(event) => {
+                      event.preventDefault()
+                      setPage(page + 1)
+                    }}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           )}
         </>
       )}

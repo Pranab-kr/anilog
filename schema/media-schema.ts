@@ -8,7 +8,6 @@ import {
   pgEnum,
   index,
   uniqueIndex,
-  boolean,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { user } from "./auth-schema";
@@ -28,6 +27,26 @@ export const mediaStatusEnum = pgEnum("media_status", [
   "watching",
   "completed",
   "plan",
+]);
+
+export const syncStatusEnum = pgEnum("sync_status", [
+  "idle",
+  "pending",
+  "syncing",
+  "synced",
+  "failed",
+]);
+
+export const importJobStatusEnum = pgEnum("import_job_status", [
+  "queued",
+  "running",
+  "completed",
+  "failed",
+]);
+
+export const importJobSourceEnum = pgEnum("import_job_source", [
+  "connected",
+  "public",
 ]);
 
 /* ===========================
@@ -59,6 +78,11 @@ export const media = pgTable("media", {
   // synced with AniList. Used to dedupe on import and to mirror writes.
   anilistMediaId: integer("anilist_media_id"),
   anilistListEntryId: integer("anilist_list_entry_id"),
+  anilistSyncStatus: syncStatusEnum("anilist_sync_status")
+    .default("idle")
+    .notNull(),
+  anilistSyncError: text("anilist_sync_error"),
+  anilistSyncedAt: timestamp("anilist_synced_at", { withTimezone: true }),
 
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -76,7 +100,47 @@ export const media = pgTable("media", {
     table.userId,
     table.anilistMediaId,
   ),
+  index("media_userId_type_status_updatedAt_idx").on(
+    table.userId,
+    table.type,
+    table.status,
+    table.updatedAt,
+  ),
 ]);
+
+export const anilistImportJob = pgTable(
+  "anilist_import_job",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    source: importJobSourceEnum("source").notNull(),
+    status: importJobStatusEnum("status").default("queued").notNull(),
+    username: text("username"),
+    anilistUserId: integer("anilist_user_id"),
+    imported: integer("imported").default(0).notNull(),
+    updated: integer("updated").default(0).notNull(),
+    errors: text("errors"),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("anilist_import_job_userId_createdAt_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    index("anilist_import_job_status_idx").on(table.status),
+  ],
+);
 
 /* ===========================
    ANILIST ACCOUNT TABLE
@@ -131,6 +195,13 @@ export const mediaRelations = relations(media, ({ one }) => ({
 export const anilistAccountRelations = relations(anilistAccount, ({ one }) => ({
   user: one(user, {
     fields: [anilistAccount.userId],
+    references: [user.id],
+  }),
+}));
+
+export const anilistImportJobRelations = relations(anilistImportJob, ({ one }) => ({
+  user: one(user, {
+    fields: [anilistImportJob.userId],
     references: [user.id],
   }),
 }));

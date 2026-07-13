@@ -39,16 +39,13 @@ export function MediaCard({ item }: MediaCardProps) {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [progressLoading, setProgressLoading] = useState<"inc" | "dec" | null>(null)
 
-  const { id, title, status, progress, total, coverImage, type } = item
+  const { id, title, status, progress, total, coverImage, type, anilistSyncStatus } = item
 
   const progressPercentage = total ? (progress / total) * 100 : 0
 
   const handleProgress = async (delta: number) => {
-    setProgressLoading(delta > 0 ? "inc" : "dec")
     const result = await updateProgress(id, delta)
-    setProgressLoading(null)
     if (!result.success && result.error) {
       toast.error(result.error)
     }
@@ -74,11 +71,12 @@ export function MediaCard({ item }: MediaCardProps) {
         <CardContent className="p-0">
           <div className="relative aspect-[3/4] overflow-hidden bg-muted">
             {coverImage ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
+              <Image
                 src={coverImage}
                 alt={title}
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                fill
+                sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+                className="object-cover transition-transform duration-500 group-hover:scale-110"
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
@@ -112,35 +110,39 @@ export function MediaCard({ item }: MediaCardProps) {
             <h3 className="font-bold leading-tight line-clamp-2 min-h-[2.5rem]">{title}</h3>
             <div className="space-y-1.5">
               <div className="flex justify-between items-center text-xs text-muted-foreground">
-                <span>
-                  {progress} / {total || "?"} {progressLabel}
-                </span>
+                <div className="min-w-0">
+                  <span>
+                    {progress} / {total || "?"} {progressLabel}
+                  </span>
+                  {anilistSyncStatus === "pending" || anilistSyncStatus === "syncing" ? (
+                    <span className="ml-2 text-[10px] text-muted-foreground">
+                      Syncing
+                    </span>
+                  ) : null}
+                  {anilistSyncStatus === "failed" ? (
+                    <span className="ml-2 text-[10px] text-destructive">
+                      Sync failed
+                    </span>
+                  ) : null}
+                </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
                     variant="ghost"
                     size="icon"
                     className="size-6 rounded-full"
                     onClick={() => handleProgress(-1)}
-                    disabled={progress <= 0 || progressLoading !== null}
+                    disabled={progress <= 0}
                   >
-                    {progressLoading === "dec" ? (
-                      <Loader2 className="size-3 animate-spin" />
-                    ) : (
-                      <Minus className="size-3" />
-                    )}
+                    <Minus className="size-3" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="size-6 rounded-full"
                     onClick={() => handleProgress(1)}
-                    disabled={(total ? progress >= total : false) || progressLoading !== null}
+                    disabled={total ? progress >= total : false}
                   >
-                    {progressLoading === "inc" ? (
-                      <Loader2 className="size-3 animate-spin" />
-                    ) : (
-                      <Plus className="size-3" />
-                    )}
+                    <Plus className="size-3" />
                   </Button>
                 </div>
               </div>
@@ -162,7 +164,7 @@ export function MediaCard({ item }: MediaCardProps) {
             <AlertDialogMedia className="bg-destructive/10">
               <Trash2 className="size-4 text-destructive" />
             </AlertDialogMedia>
-            <AlertDialogTitle>Delete "{title}"?</AlertDialogTitle>
+            <AlertDialogTitle>Delete &quot;{title}&quot;?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete this entry from your list.
             </AlertDialogDescription>

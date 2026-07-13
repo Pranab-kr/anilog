@@ -22,6 +22,7 @@
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.1",
     "embla-carousel-react": "^8.6.0",
+    "inngest": "^4.12.1",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.562.0",
     "motion": "^12.24.7",

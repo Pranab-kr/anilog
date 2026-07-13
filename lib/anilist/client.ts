@@ -163,7 +163,6 @@ export async function getMediaListCollection(
 ): Promise<AniListCollection> {
   const data = await anilistFetch<{
     MediaListCollection: {
-      userId: number;
       lists: Array<{
         status: AniListStatus | null;
         entries: Array<Omit<AniListListEntry, never>>;
@@ -172,7 +171,6 @@ export async function getMediaListCollection(
   }>(
     `query ($userId: Int!, $type: MediaType!) {
       MediaListCollection(userId: $userId, type: $type) {
-        userId
         lists {
           status
           entries { ${MEDIA_FRAGMENT} }

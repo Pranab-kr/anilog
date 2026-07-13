@@ -2,23 +2,13 @@
 
 import "server-only";
 
-import { db } from "@/lib/db";
-import { media, anilistAccount } from "@/schema/media-schema";
-import { auth } from "@/lib/auth";
+import { and, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
-import { getMediaListCollection, getUserIdByName } from "@/lib/anilist/client";
-import { _getAniListAccessToken } from "@/actions/anilist";
-import {
-  anilistStatusToLocal,
-  anilistTypeToLocal,
-  pickTitle,
-  pickTotal,
-  pickCover,
-  localTypeToAnilist,
-} from "@/lib/anilist/mapping";
-import type { AniListMediaType } from "@/lib/anilist/types";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { sendInngestEvent } from "@/lib/inngest/client";
+import { anilistAccount, anilistImportJob } from "@/schema/media-schema";
+import { normalizeAniListUsername } from "@/lib/anilist/importer";
 
 async function getCurrentUser() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -26,72 +16,75 @@ async function getCurrentUser() {
   return session.user;
 }
 
-/* ------------------------------------------------------------------
-   Import a PUBLIC user's list by AniList username
-   ------------------------------------------------------------------ */
-
-export interface ImportResult {
+export interface ImportJob {
+  id: string;
+  source: "connected" | "public";
+  status: "queued" | "running" | "completed" | "failed";
+  username: string | null;
+  anilistUserId: number | null;
   imported: number;
-  skipped: number;
-  errors: string[];
+  updated: number;
+  errors: string | null;
+  error: string | null;
+  createdAt: Date;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  updatedAt: Date;
 }
 
-/**
- * Import a public AniList user's anime + manga list into the current user's
- * local library. Uses upsert by (userId, anilistMediaId) so re-running is
- * safe — existing entries are updated in place.
- *
- * No AniList token needed (public reads).
- */
+export interface QueuedImport {
+  jobId: string;
+  job: ImportJob;
+}
+
 export async function importPublicAniListList(
   username: string,
 ): Promise<{
   success: boolean;
-  data?: ImportResult;
+  data?: QueuedImport;
   error?: string;
 }> {
   try {
     const user = await getCurrentUser();
+    const normalizedUsername = normalizeAniListUsername(username);
 
-    // 1. Resolve username → AniList userId
-    const anilistUserId = await getUserIdByName(username);
-    if (!anilistUserId) {
-      return { success: false, error: `AniList user "${username}" not found` };
+    if (!normalizedUsername) {
+      return { success: false, error: "AniList username is required" };
     }
 
-    return await _importForAniListUser(user.id, anilistUserId, undefined);
+    const [job] = await db
+      .insert(anilistImportJob)
+      .values({
+        userId: user.id,
+        source: "public",
+        username: normalizedUsername,
+      })
+      .returning();
+
+    await enqueueImportJob(user.id, job.id);
+
+    return {
+      success: true,
+      data: { jobId: job.id, job: job as ImportJob },
+    };
   } catch (error) {
-    console.error("Import error:", error);
+    console.error("Import enqueue error:", error);
     return {
       success: false,
       error:
-        error instanceof Error ? error.message : "Failed to import AniList list",
+        error instanceof Error ? error.message : "Failed to queue AniList import",
     };
   }
 }
 
-/* ------------------------------------------------------------------
-   Sync from the connected user's own AniList account
-   ------------------------------------------------------------------ */
-
-/**
- * Pull the connected user's anime + manga lists from AniList and upsert into
- * the local library. Same upsert logic as import, but authenticated.
- */
 export async function syncFromAniList(): Promise<{
   success: boolean;
-  data?: ImportResult;
+  data?: QueuedImport;
   error?: string;
 }> {
   try {
     const user = await getCurrentUser();
-    const token = await _getAniListAccessToken();
 
-    if (!token) {
-      return { success: false, error: "AniList is not connected" };
-    }
-
-    // Look up the connected AniList user id
     const [acct] = await db
       .select()
       .from(anilistAccount)
@@ -101,108 +94,85 @@ export async function syncFromAniList(): Promise<{
       return { success: false, error: "AniList is not connected" };
     }
 
-    return await _importForAniListUser(user.id, acct.anilistUserId, token);
+    const [job] = await db
+      .insert(anilistImportJob)
+      .values({
+        userId: user.id,
+        source: "connected",
+        username: acct.anilistUsername,
+        anilistUserId: acct.anilistUserId,
+      })
+      .returning();
+
+    await enqueueImportJob(user.id, job.id);
+
+    return {
+      success: true,
+      data: { jobId: job.id, job: job as ImportJob },
+    };
   } catch (error) {
-    console.error("Sync error:", error);
+    console.error("Sync enqueue error:", error);
     return {
       success: false,
       error:
-        error instanceof Error ? error.message : "Failed to sync from AniList",
+        error instanceof Error ? error.message : "Failed to queue AniList sync",
     };
   }
 }
 
-/* ------------------------------------------------------------------
-   Shared upsert logic
-   ------------------------------------------------------------------ */
+export async function getAniListImportJob(
+  jobId: string,
+): Promise<{ success: boolean; data?: ImportJob; error?: string }> {
+  try {
+    const user = await getCurrentUser();
+    const [job] = await db
+      .select()
+      .from(anilistImportJob)
+      .where(and(eq(anilistImportJob.id, jobId), eq(anilistImportJob.userId, user.id)));
 
-async function _importForAniListUser(
-  appUserId: string,
-  anilistUserId: number,
-  accessToken: string | undefined,
-): Promise<{ success: boolean; data?: ImportResult; error?: string }> {
-  const result: ImportResult = { imported: 0, skipped: 0, errors: [] };
-
-  for (const type of ["ANIME", "MANGA"] as AniListMediaType[]) {
-    try {
-      const collection = await getMediaListCollection(
-        anilistUserId,
-        type,
-        accessToken,
-      );
-
-      for (const list of collection.lists) {
-        for (const entry of list.entries) {
-          try {
-            const title = pickTitle(entry.media);
-            const localType = anilistTypeToLocal(entry.media.type);
-            const localStatus = anilistStatusToLocal(entry.status);
-            const total = pickTotal(entry);
-            const cover = pickCover(entry.media);
-
-            // Upsert: if a row with the same anilistMediaId exists for this
-            // user, update it; otherwise insert.
-            const [existing] = await db
-              .select()
-              .from(media)
-              .where(
-                eq(media.anilistMediaId, entry.mediaId),
-              )
-              .then((rows) => rows.filter((r) => r.userId === appUserId));
-
-            if (existing) {
-              await db
-                .update(media)
-                .set({
-                  title,
-                  type: localType,
-                  status: localStatus,
-                  progress: entry.progress,
-                  total,
-                  coverImage: cover,
-                  notes: entry.notes ?? null,
-                  anilistListEntryId: entry.id,
-                  updatedAt: new Date(),
-                })
-                .where(eq(media.id, existing.id));
-              result.skipped++;
-            } else {
-              await db.insert(media).values({
-                title,
-                type: localType,
-                status: localStatus,
-                progress: entry.progress,
-                total,
-                coverImage: cover,
-                notes: entry.notes ?? null,
-                userId: appUserId,
-                anilistMediaId: entry.mediaId,
-                anilistListEntryId: entry.id,
-              });
-              result.imported++;
-            }
-          } catch (entryErr) {
-            result.errors.push(
-              entryErr instanceof Error ? entryErr.message : String(entryErr),
-            );
-          }
-        }
-      }
-    } catch (typeErr) {
-      result.errors.push(
-        `Failed to fetch ${type} list: ${
-          typeErr instanceof Error ? typeErr.message : String(typeErr)
-        }`,
-      );
+    if (!job) {
+      return { success: false, error: "Import job not found" };
     }
 
-    // Throttle between type requests to respect rate limits.
-    if (type === "ANIME") {
-      await new Promise((r) => setTimeout(r, 1500));
-    }
+    return { success: true, data: job as ImportJob };
+  } catch (error) {
+    console.error("Import job lookup error:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to load import job",
+    };
   }
+}
 
-  revalidatePath("/");
+export async function getLatestAniListImportJob(): Promise<{
+  success: boolean;
+  data?: ImportJob | null;
+  error?: string;
+}> {
+  try {
+    const user = await getCurrentUser();
+    const [job] = await db
+      .select()
+      .from(anilistImportJob)
+      .where(eq(anilistImportJob.userId, user.id))
+      .orderBy(desc(anilistImportJob.createdAt))
+      .limit(1);
 
-  return { success: true, data: result };
+    return { success: true, data: (job as ImportJob | undefined) ?? null };
+  } catch (error) {
+    console.error("Latest import job lookup error:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to load import job",
+    };
+  }
+}
+
+async function enqueueImportJob(userId: string, jobId: string) {
+  await sendInngestEvent({
+    name: "anilist/import.requested",
+    data: { userId, jobId },
+  });
 }

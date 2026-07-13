@@ -75,7 +75,7 @@ export function EditMediaModal({ item, open, onOpenChange }: EditMediaModalProps
       onOpenChange(false)
       // Refresh if type changed
       if (mediaType !== item.type) {
-        fetchMedia(activeMediaType)
+        fetchMedia({ type: activeMediaType })
       }
     } else {
       toast.error(result.error || "Failed to update media")

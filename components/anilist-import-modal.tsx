@@ -15,13 +15,22 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { importPublicAniListList, type ImportResult } from "@/actions/anilist-import";
+import {
+  getAniListImportJob,
+  importPublicAniListList,
+  type ImportJob,
+} from "@/actions/anilist-import";
 
-export function AniListImportModal() {
+interface AniListImportModalProps {
+  onImported?: () => Promise<void> | void;
+}
+
+export function AniListImportModal({ onImported }: AniListImportModalProps) {
   const [open, setOpen] = useState(false);
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<ImportResult | null>(null);
+  const [result, setResult] = useState<ImportJob | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleImport = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,19 +39,50 @@ export function AniListImportModal() {
 
     setLoading(true);
     setResult(null);
+    setError(null);
 
     const res = await importPublicAniListList(trimmed);
 
-    setLoading(false);
-
     if (res.success && res.data) {
-      setResult(res.data);
-      const total = res.data.imported + res.data.skipped;
-      toast.success(
-        `Imported ${res.data.imported} new, updated ${res.data.skipped} existing (${total} total)`,
-      );
+      toast.success("AniList import queued");
+      setResult(res.data.job);
+
+      for (let attempt = 0; attempt < 200; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        const job = await getAniListImportJob(res.data.jobId);
+        if (!job.success || !job.data) continue;
+
+        setResult(job.data);
+
+        if (job.data.status === "completed") {
+          const total = job.data.imported + job.data.updated;
+          const message = `Imported ${job.data.imported} new, updated ${job.data.updated} existing (${total} total)`;
+          if (job.data.errors) {
+            toast.warning(`${message}; some items were skipped`);
+          } else {
+            toast.success(message);
+          }
+          await onImported?.();
+          setLoading(false);
+          return;
+        }
+
+        if (job.data.status === "failed") {
+          const message = job.data.error ?? "Import failed";
+          setError(message);
+          toast.error(message.split("\n")[0]);
+          setLoading(false);
+          return;
+        }
+      }
+
+      toast.warning("Import is still running in the background");
+      setLoading(false);
     } else {
-      toast.error(res.error ?? "Import failed");
+      const message = res.error ?? "Import failed";
+      setError(message);
+      toast.error(message.split("\n")[0]);
+      setLoading(false);
     }
   };
 
@@ -51,6 +91,7 @@ export function AniListImportModal() {
     if (!isOpen) {
       setUsername("");
       setResult(null);
+      setError(null);
     }
   };
 
@@ -91,23 +132,45 @@ export function AniListImportModal() {
 
             {result && (
               <div className="rounded-lg border bg-muted/50 p-3 text-sm space-y-1">
-                <p className="font-medium">Import complete</p>
+                <p className="font-medium">
+                  {result.status === "completed"
+                    ? "Import complete"
+                    : result.status === "failed"
+                      ? "Import failed"
+                      : "Import queued"}
+                </p>
                 <p className="text-muted-foreground">
                   <span className="text-green-600">{result.imported} new</span>
                   {" · "}
-                  <span className="text-blue-600">{result.skipped} updated</span>
+                  <span className="text-blue-600">{result.updated} updated</span>
                 </p>
-                {result.errors.length > 0 && (
-                  <p className="text-destructive text-xs">
-                    {result.errors.length} error(s) — check console for details
-                  </p>
+                {result.errors && (
+                  <div className="space-y-1 text-destructive text-xs">
+                    <p>Item/list error(s):</p>
+                    <ul className="list-disc space-y-1 pl-4">
+                      {result.errors.split("\n").slice(0, 3).map((message) => (
+                        <li key={message}>{message}</li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
+              </div>
+            )}
+
+            {error && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                <p className="font-medium">Import failed</p>
+                <ul className="mt-1 list-disc space-y-1 pl-4 text-xs">
+                  {error.split("\n").slice(0, 4).map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>
 
           <DialogFooter>
-            {result ? (
+            {result?.status === "completed" || result?.status === "failed" ? (
               <Button type="button" onClick={() => handleClose(false)}>
                 Done
               </Button>
@@ -116,7 +179,7 @@ export function AniListImportModal() {
                 {loading ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Importing...
+                    Queueing...
                   </>
                 ) : (
                   <>

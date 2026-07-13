@@ -4,17 +4,14 @@ import { db } from "@/lib/db";
 import { media } from "@/schema/media-schema";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { eq, and, desc } from "drizzle-orm";
+import { and, desc, eq, ilike, sql, type SQL } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import {
-  _getAniListAccessToken,
-} from "@/actions/anilist";
-import { saveMediaListEntry, deleteMediaListEntry } from "@/lib/anilist/client";
-import { localStatusToAnilist } from "@/lib/anilist/mapping";
+import { sendInngestEvent } from "@/lib/inngest/client";
 
 // Types
 export type MediaType = "anime" | "manga";
 export type MediaStatus = "watching" | "completed" | "plan";
+export type AniListSyncStatus = "idle" | "pending" | "syncing" | "synced" | "failed";
 
 export interface MediaItem {
   id: string;
@@ -28,19 +25,11 @@ export interface MediaItem {
   userId: string;
   anilistMediaId: number | null;
   anilistListEntryId: number | null;
+  anilistSyncStatus: AniListSyncStatus;
+  anilistSyncError: string | null;
+  anilistSyncedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface CreateMediaInput {
-  title: string;
-  type: MediaType;
-  status?: MediaStatus;
-  coverImage?: string | null;
-  progress?: number;
-  total?: number | null;
-  notes?: string | null;
-  anilistMediaId?: number | null;
 }
 
 export interface UpdateMediaInput {
@@ -52,6 +41,22 @@ export interface UpdateMediaInput {
   progress?: number;
   total?: number | null;
   notes?: string | null;
+}
+
+export interface MediaPageInput {
+  type?: MediaType;
+  status?: MediaStatus | "All";
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface MediaPage {
+  items: MediaItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 // Helper to get current user
@@ -67,100 +72,61 @@ async function getCurrentUser() {
   return session.user;
 }
 
-// CREATE - Add new media
-export async function createMedia(input: CreateMediaInput): Promise<{ success: boolean; data?: MediaItem; error?: string }> {
+// READ - Get a paginated media page for current user
+export async function getMediaPage(input: MediaPageInput = {}): Promise<{
+  success: boolean;
+  data?: MediaPage;
+  error?: string;
+}> {
   try {
     const user = await getCurrentUser();
+    const page = Math.max(1, input.page ?? 1);
+    const pageSize = Math.min(60, Math.max(1, input.pageSize ?? 24));
+    const offset = (page - 1) * pageSize;
+    const conditions: SQL[] = [eq(media.userId, user.id)];
 
-    // Check for duplicate title
-    const [existingMedia] = await db
+    if (input.type) {
+      conditions.push(eq(media.type, input.type));
+    }
+
+    if (input.status && input.status !== "All") {
+      conditions.push(eq(media.status, input.status));
+    }
+
+    const search = input.search?.trim();
+    if (search) {
+      conditions.push(ilike(media.title, `%${search}%`));
+    }
+
+    const where = and(...conditions);
+
+    const [countRow] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(media)
+      .where(where);
+
+    const items = await db
       .select()
       .from(media)
-      .where(and(eq(media.title, input.title), eq(media.userId, user.id)));
+      .where(where)
+      .orderBy(desc(media.updatedAt), desc(media.createdAt))
+      .limit(pageSize)
+      .offset(offset);
 
-    if (existingMedia) {
-      return {
-        success: false,
-        error: `A media with the title "${input.title}" already exists in your list`,
-      };
-    }
-
-    const [newMedia] = await db
-      .insert(media)
-      .values({
-        title: input.title,
-        type: input.type,
-        status: input.status || "plan",
-        coverImage: input.coverImage || null,
-        progress: input.progress || 0,
-        total: input.total || null,
-        notes: input.notes || null,
-        userId: user.id,
-        anilistMediaId: input.anilistMediaId ?? null,
-      })
-      .returning();
-
-    // Write-through: mirror to AniList if connected and linked
-    if (newMedia.anilistMediaId) {
-      const token = await _getAniListAccessToken();
-      if (token) {
-        try {
-          const entryId = await saveMediaListEntry(
-            {
-              mediaId: newMedia.anilistMediaId,
-              status: localStatusToAnilist((newMedia.status ?? "plan") as MediaStatus),
-              progress: newMedia.progress,
-              notes: newMedia.notes ?? undefined,
-            },
-            token,
-          );
-          await db
-            .update(media)
-            .set({ anilistListEntryId: entryId })
-            .where(eq(media.id, newMedia.id));
-          newMedia.anilistListEntryId = entryId;
-        } catch (syncErr) {
-          console.error("AniList sync failed on create:", syncErr);
-        }
-      }
-    }
-
-    revalidatePath("/");
+    const total = countRow?.count ?? 0;
 
     return {
       success: true,
-      data: newMedia as MediaItem,
+      data: {
+        items: items as MediaItem[],
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      },
     };
   } catch (error) {
-    console.error("Error creating media:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to create media",
-    };
-  }
-}
-
-// READ - Get all media for current user
-export async function getMedia(type?: MediaType): Promise<{ success: boolean; data?: MediaItem[]; error?: string }> {
-  try {
-    const user = await getCurrentUser();
-
-    const conditions = type
-      ? and(eq(media.userId, user.id), eq(media.type, type))
-      : eq(media.userId, user.id);
-
-    const userMedia = await db
-      .select()
-      .from(media)
-      .where(conditions)
-      .orderBy(desc(media.createdAt));
-
-    return {
-      success: true,
-      data: userMedia as MediaItem[],
-    };
-  } catch (error) {
-    console.error("Error fetching media:", error);
+    console.error("Error fetching media page:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to fetch media",
@@ -242,6 +208,10 @@ export async function updateMedia(input: UpdateMediaInput): Promise<{ success: b
     if (input.progress !== undefined) updateData.progress = input.progress;
     if (input.total !== undefined) updateData.total = input.total;
     if (input.notes !== undefined) updateData.notes = input.notes;
+    if (existing.anilistMediaId) {
+      updateData.anilistSyncStatus = "pending";
+      updateData.anilistSyncError = null;
+    }
 
     const [updatedMedia] = await db
       .update(media)
@@ -249,24 +219,8 @@ export async function updateMedia(input: UpdateMediaInput): Promise<{ success: b
       .where(and(eq(media.id, input.id), eq(media.userId, user.id)))
       .returning();
 
-    // Write-through: mirror to AniList
     if (updatedMedia.anilistMediaId) {
-      const token = await _getAniListAccessToken();
-      if (token) {
-        try {
-          await saveMediaListEntry(
-            {
-              mediaId: updatedMedia.anilistMediaId,
-              status: localStatusToAnilist(updatedMedia.status as MediaStatus),
-              progress: updatedMedia.progress,
-              notes: updatedMedia.notes ?? undefined,
-            },
-            token,
-          );
-        } catch (syncErr) {
-          console.error("AniList sync failed on update:", syncErr);
-        }
-      }
+      await enqueueMediaSync(user.id, updatedMedia.id);
     }
 
     revalidatePath("/");
@@ -320,28 +274,15 @@ export async function updateMediaProgress(
       .set({
         progress: Math.max(0, progress),
         status: newStatus,
+        anilistSyncStatus: existing.anilistMediaId ? "pending" : existing.anilistSyncStatus,
+        anilistSyncError: existing.anilistMediaId ? null : existing.anilistSyncError,
         updatedAt: new Date(),
       })
       .where(and(eq(media.id, id), eq(media.userId, user.id)))
       .returning();
 
-    // Write-through: mirror progress to AniList
     if (updatedMedia.anilistMediaId) {
-      const token = await _getAniListAccessToken();
-      if (token) {
-        try {
-          await saveMediaListEntry(
-            {
-              mediaId: updatedMedia.anilistMediaId,
-              status: localStatusToAnilist(updatedMedia.status as MediaStatus),
-              progress: updatedMedia.progress,
-            },
-            token,
-          );
-        } catch (syncErr) {
-          console.error("AniList sync failed on progress update:", syncErr);
-        }
-      }
+      await enqueueMediaSync(user.id, updatedMedia.id);
     }
 
     revalidatePath("/");
@@ -377,21 +318,20 @@ export async function deleteMedia(id: string): Promise<{ success: boolean; error
       };
     }
 
-    // Write-through: delete from AniList before local delete
-    if (existing.anilistListEntryId) {
-      const token = await _getAniListAccessToken();
-      if (token) {
-        try {
-          await deleteMediaListEntry(existing.anilistListEntryId, token);
-        } catch (syncErr) {
-          console.error("AniList sync failed on delete:", syncErr);
-        }
-      }
-    }
-
     await db
       .delete(media)
       .where(and(eq(media.id, id), eq(media.userId, user.id)));
+
+    if (existing.anilistListEntryId) {
+      await sendInngestEvent({
+        name: "anilist/media.delete.requested",
+        data: {
+          userId: user.id,
+          mediaId: existing.id,
+          anilistListEntryId: existing.anilistListEntryId,
+        },
+      });
+    }
 
     revalidatePath("/");
 
@@ -405,4 +345,11 @@ export async function deleteMedia(id: string): Promise<{ success: boolean; error
       error: error instanceof Error ? error.message : "Failed to delete media",
     };
   }
+}
+
+async function enqueueMediaSync(userId: string, mediaId: string) {
+  await sendInngestEvent({
+    name: "anilist/media.sync.requested",
+    data: { userId, mediaId },
+  });
 }
