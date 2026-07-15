@@ -111,7 +111,7 @@ function ResultCard({
 
       {/* Info */}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium leading-tight">{title}</p>
+        <p className="text-sm font-medium leading-tight line-clamp-2 break-words">{title}</p>
         {result.title.romaji && result.title.romaji !== title && (
           <p className="truncate text-xs text-muted-foreground">
             {result.title.romaji}
@@ -421,11 +421,13 @@ export function AddMediaModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[540px] p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-5 pt-5 pb-4 border-b">
-          <DialogTitle className="flex items-center gap-2 text-base">
-            <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+          <DialogTitle className="flex items-center gap-2 text-base min-w-0">
+            <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
               <Search className="size-4 text-primary" />
             </div>
-            {prefillTitle ? `Add "${prefillTitle}"` : "Search & Add"}
+            <span className="truncate">
+              {prefillTitle ? `Add "${prefillTitle}"` : "Search & Add"}
+            </span>
           </DialogTitle>
         </DialogHeader>
         {/* key=String(open) remounts ModalContent fresh every time modal opens,
