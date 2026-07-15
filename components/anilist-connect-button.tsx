@@ -59,7 +59,7 @@ export function AniListConnectButton() {
           ) : (
             <Link2 className="size-4" />
           )}
-          <span className="text-xs">
+          <span className="text-xs hidden sm:inline">
             {loading
               ? "Loading..."
               : connection?.connected

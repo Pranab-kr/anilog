@@ -100,7 +100,7 @@ export function AniListImportModal({ onImported }: AniListImportModalProps) {
       <DialogTrigger render={
         <Button variant="outline" size="sm" className="gap-1.5">
           <Download className="size-4" />
-          Import
+          <span className="hidden sm:inline">Import</span>
         </Button>
       } />
       <DialogContent className="sm:max-w-[425px]">

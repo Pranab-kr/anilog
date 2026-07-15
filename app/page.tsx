@@ -17,23 +17,26 @@ export default async function mainPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <div className="size-8 rounded-full bg-primary" />
-            <h1 className="text-xl font-bold tracking-tight">AniLog</h1>
+        <div className="container mx-auto flex h-14 items-center justify-between px-3 sm:px-4">
+          {/* Logo */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="size-7 sm:size-8 rounded-full bg-primary" />
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight">AniLog</h1>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Right side — actions collapse gracefully on mobile */}
+          <div className="flex items-center gap-1 sm:gap-2 min-w-0">
             <HeaderActions />
             <ThemeToggle />
-            <div className="text-sm text-muted-foreground">
+            {/* Username — hidden on very small screens */}
+            <div className="hidden sm:block text-sm text-muted-foreground truncate max-w-[120px]">
               {session.user.name}
             </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 pb-28">
         <MediaTabs />
       </main>
     </div>

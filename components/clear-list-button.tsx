@@ -63,7 +63,7 @@ export function ClearListButton({ onCleared }: ClearListButtonProps) {
         onClick={() => setOpen(true)}
       >
         <Trash2 className="size-3.5" />
-        Clear List
+        <span className="hidden sm:inline">Clear List</span>
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>

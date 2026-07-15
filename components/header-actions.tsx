@@ -97,7 +97,7 @@ export function HeaderActions() {
 					) : (
 						<RefreshCw className="size-4" />
 					)}
-					<span className="text-xs">Sync</span>
+					<span className="text-xs hidden sm:inline">Sync</span>
 				</Button>
 			)}
 			<AniListImportModal onImported={() => fetchMedia()} />

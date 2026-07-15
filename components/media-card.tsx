@@ -128,7 +128,7 @@ export function MediaCard({ item }: MediaCardProps) {
                     </span>
                   ) : null}
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 transition-opacity md:opacity-0 md:group-hover:opacity-100">
                   <Button
                     variant="ghost"
                     size="icon"

@@ -190,7 +190,7 @@ export function MediaList() {
 			</div>
 
 			{/* ── Filter buttons ── */}
-			<div className="flex flex-wrap justify-center gap-2 max-w-4xl mx-auto">
+			<div className="flex overflow-x-auto pb-1.5 sm:pb-0 sm:flex-wrap justify-start sm:justify-center gap-1.5 sm:gap-2 max-w-4xl mx-auto w-full no-scrollbar -mx-3 px-3 sm:mx-auto sm:px-0 scroll-smooth select-none">
 				{filterOptions.map((filter) => (
 					<Button
 						key={filter}
@@ -198,7 +198,7 @@ export function MediaList() {
 						size="sm"
 						onClick={() => setActiveFilter(filter)}
 						className={cn(
-							"rounded-full px-4 transition-all",
+							"rounded-full px-4 transition-all shrink-0 sm:shrink",
 							activeFilter === filter
 								? "bg-primary text-primary-foreground shadow-md"
 								: "bg-secondary/40 text-muted-foreground hover:bg-secondary",
@@ -232,7 +232,7 @@ export function MediaList() {
 					</div>
 
 					{/* ── Grid ── */}
-					<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+					<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-6">
 						{pageItems.map((item) => (
 							<MediaCard key={item.id} item={item} />
 						))}
