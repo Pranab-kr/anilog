@@ -1,6 +1,6 @@
 "use client";
 
-import { Book, LogOut, Moon, Plus, Sun, Tv } from "lucide-react";
+import { Book, Compass, LogOut, Moon, Plus, Sun, Tv } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
@@ -67,6 +67,13 @@ export function MediaTabs() {
 					<Moon className="h-full w-full text-neutral-500 dark:text-neutral-300" />
 				),
 			onClick: () => setTheme(theme === "dark" ? "light" : "dark"),
+		},
+		{
+			title: "Explore",
+			icon: (
+				<Compass className="h-full w-full text-neutral-500 dark:text-neutral-300" />
+			),
+			onClick: () => router.push("/explore"),
 		},
 		{
 			title: "Logout",
