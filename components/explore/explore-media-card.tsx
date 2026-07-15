@@ -120,12 +120,12 @@ export function ExploreMediaCard({
       </div>
 
       {/* Info */}
-      <div className="p-2">
-        <p className="text-xs font-medium leading-snug line-clamp-2 text-foreground">
+      <div className="p-2 min-h-[52px] flex flex-col justify-start">
+        <p className="text-xs font-medium leading-snug line-clamp-2 break-words text-foreground">
           {title}
         </p>
         {item.format && (
-          <Badge variant="secondary" className="mt-1 text-[10px] h-4 px-1.5">
+          <Badge variant="secondary" className="mt-1 text-[10px] h-4 px-1.5 w-fit">
             {item.format.replace(/_/g, " ")}
           </Badge>
         )}

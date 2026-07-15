@@ -47,11 +47,13 @@ function getCurrentSeason(): Season {
   return "FALL";
 }
 
-const YEAR_RANGE = 6; // years to show
+const START_YEAR = 1990;
 
 export function SeasonBrowser({ initialSeason }: { initialSeason?: Season } = {}) {
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: YEAR_RANGE }, (_, i) => currentYear - i + 1);
+  // Build descending list from currentYear+2 down to START_YEAR
+  const years: number[] = [];
+  for (let y = currentYear + 2; y >= START_YEAR; y--) years.push(y);
 
   const [season, setSeason] = useState<Season>(initialSeason ?? getCurrentSeason());
   const [year, setYear] = useState(currentYear);

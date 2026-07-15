@@ -73,10 +73,6 @@ const EXPLORE_MEDIA_FRAGMENT = `
    ACTIONS
    ================================================================ */
 
-/**
- * Browse seasonal anime by season + year.
- * sort: POPULARITY_DESC | SCORE_DESC | START_DATE | END_DATE
- */
 export async function getSeasonalAnime(
   season: "WINTER" | "SPRING" | "SUMMER" | "FALL",
   year: number,
@@ -107,7 +103,6 @@ export async function getSeasonalAnime(
   }
 }
 
-/** Top 100 anime or manga sorted by score. */
 export async function getTopMedia(
   type: "ANIME" | "MANGA",
   sort: SortOption = "SCORE_DESC",
@@ -134,7 +129,6 @@ export async function getTopMedia(
   }
 }
 
-/** Currently airing anime. */
 export async function getAiringAnime(
   page = 1,
   perPage = 30,
@@ -159,7 +153,6 @@ export async function getAiringAnime(
   }
 }
 
-/** Upcoming anime (status: NOT_YET_RELEASED). */
 export async function getUpcomingAnime(
   page = 1,
   perPage = 30,
@@ -184,7 +177,6 @@ export async function getUpcomingAnime(
   }
 }
 
-/** Top movies (format: MOVIE). */
 export async function getTopMovies(
   page = 1,
   perPage = 30,
@@ -209,7 +201,6 @@ export async function getTopMovies(
   }
 }
 
-/** Currently publishing manga. */
 export async function getPublishingManga(
   page = 1,
   perPage = 30,
@@ -234,7 +225,6 @@ export async function getPublishingManga(
   }
 }
 
-/** Upcoming manga. */
 export async function getUpcomingManga(
   page = 1,
   perPage = 30,
@@ -260,42 +250,57 @@ export async function getUpcomingManga(
 }
 
 /**
- * Weekly airing schedule — returns schedule items grouped by airing time.
- * weekStart / weekEnd are Unix timestamps (seconds).
+ * Weekly airing schedule — paginates all pages so we get the full week.
+ * AniList caps perPage at 50, so a 200+ item week needs multiple fetches.
  */
 export async function getAiringSchedule(
   weekStart: number,
   weekEnd: number,
 ): Promise<{ success: boolean; data?: AiringScheduleItem[]; error?: string }> {
   try {
-    const data = await anilistFetch<{
-      Page: { airingSchedules: AiringScheduleItem[] };
-    }>(
-      `query ($weekStart: Int!, $weekEnd: Int!) {
-        Page(perPage: 50) {
-          airingSchedules(airingAt_greater: $weekStart, airingAt_lesser: $weekEnd, sort: TIME) {
-            id
-            airingAt
-            timeUntilAiring
-            episode
-            media {
+    const all: AiringScheduleItem[] = [];
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore && page <= 8) {
+      const data = await anilistFetch<{
+        Page: { pageInfo: { hasNextPage: boolean }; airingSchedules: AiringScheduleItem[] };
+      }>(
+        `query ($weekStart: Int!, $weekEnd: Int!, $page: Int!) {
+          Page(page: $page, perPage: 50) {
+            pageInfo { hasNextPage }
+            airingSchedules(airingAt_greater: $weekStart, airingAt_lesser: $weekEnd, sort: TIME) {
               id
-              title { romaji english }
-              coverImage { large }
-              status
+              airingAt
+              timeUntilAiring
+              episode
+              media {
+                id
+                title { romaji english }
+                coverImage { large }
+                status
+              }
             }
           }
-        }
-      }`,
-      { weekStart, weekEnd },
-    );
-    return { success: true, data: data.Page.airingSchedules };
+        }`,
+        { weekStart, weekEnd, page },
+      );
+      all.push(...data.Page.airingSchedules);
+      hasMore = data.Page.pageInfo.hasNextPage;
+      page++;
+    }
+
+    return { success: true, data: all };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to fetch airing schedule" };
   }
 }
 
-/** Full-text search across anime & manga. */
+/**
+ * Full-text search.
+ * Uses two separate queries — WITH type and WITHOUT type — to avoid GraphQL
+ * treating `type: null` differently from a fully-omitted type argument.
+ */
 export async function exploreSearch(
   term: string,
   type?: "ANIME" | "MANGA",
@@ -305,20 +310,41 @@ export async function exploreSearch(
   const trimmed = term.trim();
   if (!trimmed || trimmed.length < 2) return { success: true, data: [] };
   try {
-    const data = await anilistFetch<{
-      Page: { pageInfo: { hasNextPage: boolean }; media: ExploreMediaItem[] };
-    }>(
-      `query ($search: String!, $type: MediaType, $page: Int!, $perPage: Int!) {
-        Page(page: $page, perPage: $perPage) {
-          pageInfo { hasNextPage }
-          media(search: $search, type: $type, sort: SEARCH_MATCH, isAdult: false) {
-            ${EXPLORE_MEDIA_FRAGMENT}
+    let data: { Page: { pageInfo: { hasNextPage: boolean }; media: ExploreMediaItem[] } };
+
+    if (type) {
+      // typed search — pass MediaType variable
+      data = await anilistFetch<typeof data>(
+        `query ($search: String!, $type: MediaType!, $page: Int!, $perPage: Int!) {
+          Page(page: $page, perPage: $perPage) {
+            pageInfo { hasNextPage }
+            media(search: $search, type: $type, sort: SEARCH_MATCH, isAdult: false) {
+              ${EXPLORE_MEDIA_FRAGMENT}
+            }
           }
-        }
-      }`,
-      { search: trimmed, type: type ?? null, page, perPage },
-    );
-    return { success: true, data: data.Page.media, hasNextPage: data.Page.pageInfo.hasNextPage };
+        }`,
+        { search: trimmed, type, page, perPage },
+      );
+    } else {
+      // untyped search — omit type argument entirely so AniList returns both
+      data = await anilistFetch<typeof data>(
+        `query ($search: String!, $page: Int!, $perPage: Int!) {
+          Page(page: $page, perPage: $perPage) {
+            pageInfo { hasNextPage }
+            media(search: $search, sort: SEARCH_MATCH, isAdult: false) {
+              ${EXPLORE_MEDIA_FRAGMENT}
+            }
+          }
+        }`,
+        { search: trimmed, page, perPage },
+      );
+    }
+
+    return {
+      success: true,
+      data: data.Page.media,
+      hasNextPage: data.Page.pageInfo.hasNextPage,
+    };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Search failed" };
   }
