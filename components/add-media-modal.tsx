@@ -32,6 +32,11 @@ interface AddMediaModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultType?: MediaType;
+  /** Pre-populate from Explore card */
+  prefillAnilistId?: number;
+  prefillTitle?: string;
+  prefillCover?: string | null;
+  prefillEpisodes?: number;
 }
 
 type TabType = "ANIME" | "MANGA";
@@ -150,9 +155,17 @@ function ResultCard({
 function ModalContent({
   defaultType,
   onClose,
+  prefillAnilistId,
+  prefillTitle,
+  prefillCover,
+  prefillEpisodes,
 }: {
   defaultType: MediaType;
   onClose: () => void;
+  prefillAnilistId?: number;
+  prefillTitle?: string;
+  prefillCover?: string | null;
+  prefillEpisodes?: number;
 }) {
   const { fetchMedia } = useMediaStore();
 
@@ -164,6 +177,24 @@ function ModalContent({
   const [addingId, setAddingId] = useState<number | null>(null);
   const [addedIds, setAddedIds] = useState<Set<number>>(new Set());
   const [selectedStatus, setSelectedStatus] = useState<MediaStatus>("plan");
+
+  // Prefill: if an anilist item was passed in directly, build a synthetic result
+  const prefillResult: AniListSearchResult | null =
+    typeof prefillAnilistId === "number"
+      ? {
+          id: prefillAnilistId,
+          title: {
+            romaji: prefillTitle ?? null,
+            english: prefillTitle ?? null,
+            native: null,
+          },
+          type: defaultType === "manga" ? "MANGA" : "ANIME",
+          coverImage: { large: prefillCover ?? null, medium: prefillCover ?? null },
+          episodes: defaultType === "anime" ? (prefillEpisodes ?? null) : null,
+          chapters: defaultType === "manga" ? (prefillEpisodes ?? null) : null,
+          averageScore: null,
+        }
+      : null;
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -242,6 +273,10 @@ function ModalContent({
   const hasResults = results.length > 0;
   const showEmpty = !searching && query.trim().length >= 2 && !hasResults && !searchError;
 
+  // If we have a prefill item, show it directly (no search needed)
+  const prefillAdded = prefillResult ? addedIds.has(prefillResult.id) : false;
+  const prefillAdding = prefillResult ? addingId === prefillResult.id : false;
+
   return (
     <div className="flex flex-col gap-0">
       {/* ── Tabs + status selector ── */}
@@ -297,20 +332,33 @@ function ModalContent({
 
       {/* ── Results ── */}
       <div className="min-h-[220px] max-h-[400px] overflow-y-auto px-5 pb-5">
-        {searching && (
+        {/* Prefill card — shown when opened from Explore */}
+        {prefillResult && (
+          <div className="mb-3">
+            <p className="text-xs text-muted-foreground mb-2">Adding from Explore:</p>
+            <ResultCard
+              result={prefillResult}
+              adding={prefillAdding}
+              added={prefillAdded}
+              onAdd={handleAdd}
+            />
+          </div>
+        )}
+
+        {!prefillResult && searching && (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
             <Loader2 className="size-6 animate-spin" />
             <p className="text-sm">Searching AniList…</p>
           </div>
         )}
 
-        {!searching && searchError && (
+        {!prefillResult && !searching && searchError && (
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {searchError}
           </div>
         )}
 
-        {!searching && !searchError && query.trim().length < 2 && (
+        {!prefillResult && !searching && !searchError && query.trim().length < 2 && (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
             <div className="flex size-12 items-center justify-center rounded-full bg-muted">
               {tab === "ANIME" ? <Tv className="size-6" /> : <BookOpen className="size-6" />}
@@ -321,14 +369,14 @@ function ModalContent({
           </div>
         )}
 
-        {showEmpty && (
+        {!prefillResult && showEmpty && (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
             <Search className="size-6 opacity-40" />
             <p className="text-sm">No results for &ldquo;{query}&rdquo;</p>
           </div>
         )}
 
-        {!searching && hasResults && (
+        {!prefillResult && !searching && hasResults && (
           <div className="flex flex-col gap-2">
             {results.map((result) => (
               <ResultCard
@@ -364,6 +412,10 @@ export function AddMediaModal({
   open,
   onOpenChange,
   defaultType = "anime",
+  prefillAnilistId,
+  prefillTitle,
+  prefillCover,
+  prefillEpisodes,
 }: AddMediaModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -373,7 +425,7 @@ export function AddMediaModal({
             <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
               <Search className="size-4 text-primary" />
             </div>
-            Search & Add
+            {prefillTitle ? `Add "${prefillTitle}"` : "Search & Add"}
           </DialogTitle>
         </DialogHeader>
         {/* key=String(open) remounts ModalContent fresh every time modal opens,
@@ -382,6 +434,10 @@ export function AddMediaModal({
           key={String(open)}
           defaultType={defaultType}
           onClose={() => onOpenChange(false)}
+          prefillAnilistId={prefillAnilistId}
+          prefillTitle={prefillTitle}
+          prefillCover={prefillCover}
+          prefillEpisodes={prefillEpisodes}
         />
       </DialogContent>
     </Dialog>
