@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { searchAniList } from "@/actions/anilist-search";
-import type { AniListSearchResult } from "@/actions/anilist-search";
+import type { AniListSearchResult } from "@/lib/anilist/types";
 import { createMedia } from "@/actions/media";
 import type { MediaStatus, MediaType } from "@/actions/media";
 import { Button } from "@/components/ui/button";

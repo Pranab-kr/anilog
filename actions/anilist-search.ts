@@ -3,8 +3,6 @@
 import { searchMedia } from "@/lib/anilist/client";
 import type { AniListMediaType, AniListSearchResult } from "@/lib/anilist/types";
 
-export type { AniListSearchResult };
-
 /**
  * Server action wrapper around the AniList searchMedia client.
  * Keeps `server-only` imports off the client bundle.
