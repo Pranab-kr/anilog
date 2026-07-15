@@ -243,8 +243,84 @@ export const runAniListImport = inngest.createFunction(
   },
 );
 
+export const addMediaEntry = inngest.createFunction(
+  {
+    id: "add-media-entry",
+    triggers: [{ event: "media/add.requested" }],
+    // Dedupe rapid double-clicks on the same AniList media by the same user
+    idempotency: "event.data.userId + '-' + string(event.data.anilistMediaId ?? event.data.title)",
+  },
+  async ({ event, step }) => {
+    const payload = event.data as {
+      userId: string;
+      title: string;
+      type: "anime" | "manga";
+      status: string;
+      coverImage: string | null;
+      total: number | null;
+      anilistMediaId: number | null;
+    };
+
+    const created = await step.run("insert media row", async () => {
+      // Duplicate check by anilistMediaId
+      if (payload.anilistMediaId) {
+        const [existing] = await db
+          .select({ id: media.id, title: media.title })
+          .from(media)
+          .where(
+            and(
+              eq(media.userId, payload.userId),
+              eq(media.anilistMediaId, payload.anilistMediaId),
+            ),
+          );
+        if (existing) return { skipped: true, reason: "duplicate_anilist_id" };
+      }
+
+      // Duplicate check by title
+      const [existingByTitle] = await db
+        .select({ id: media.id })
+        .from(media)
+        .where(and(eq(media.userId, payload.userId), eq(media.title, payload.title)));
+      if (existingByTitle) return { skipped: true, reason: "duplicate_title" };
+
+      const [row] = await db
+        .insert(media)
+        .values({
+          title: payload.title,
+          type: payload.type,
+          status: payload.status as import("@/actions/media").MediaStatus,
+          coverImage: payload.coverImage,
+          progress: 0,
+          total: payload.total,
+          userId: payload.userId,
+          anilistMediaId: payload.anilistMediaId,
+          anilistSyncStatus: payload.anilistMediaId ? "pending" : "idle",
+        })
+        .returning();
+
+      return { inserted: true, mediaId: row.id };
+    });
+
+    if ("skipped" in created && created.skipped) {
+      return created;
+    }
+
+    if ("inserted" in created && created.mediaId && payload.anilistMediaId) {
+      await step.run("enqueue anilist sync", async () => {
+        await inngest.send({
+          name: "anilist/media.sync.requested",
+          data: { userId: payload.userId, mediaId: created.mediaId as string },
+        });
+      });
+    }
+
+    return created;
+  },
+);
+
 export const functions = [
   syncMediaToAniList,
   deleteMediaFromAniList,
   runAniListImport,
+  addMediaEntry,
 ];
