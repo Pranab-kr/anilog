@@ -14,6 +14,18 @@ export type MediaStatus = "watching" | "rewatching" | "completed" | "paused" | "
 export type AniListSyncStatus = "idle" | "pending" | "syncing" | "synced" | "failed";
 export type MediaSort = "title" | "score" | "progress" | "updatedAt" | "createdAt";
 
+export interface CreateMediaInput {
+  title: string;
+  type: MediaType;
+  status?: MediaStatus;
+  coverImage?: string | null;
+  progress?: number;
+  total?: number | null;
+  rating?: number | null;
+  notes?: string | null;
+  anilistMediaId?: number | null;
+}
+
 export interface MediaItem {
   id: string;
   title: string;
@@ -75,6 +87,67 @@ async function getCurrentUser() {
   }
 
   return session.user;
+}
+
+
+// CREATE - Add new media entry
+export async function createMedia(input: CreateMediaInput): Promise<{ success: boolean; data?: MediaItem; error?: string }> {
+  try {
+    const user = await getCurrentUser();
+
+    // Check for duplicate by anilistMediaId (if provided)
+    if (input.anilistMediaId) {
+      const [existing] = await db
+        .select()
+        .from(media)
+        .where(and(eq(media.userId, user.id), eq(media.anilistMediaId, input.anilistMediaId)));
+
+      if (existing) {
+        return { success: false, error: `"${existing.title}" is already in your list` };
+      }
+    }
+
+    // Check for duplicate by title
+    const [existingByTitle] = await db
+      .select()
+      .from(media)
+      .where(and(eq(media.userId, user.id), eq(media.title, input.title)));
+
+    if (existingByTitle) {
+      return { success: false, error: `"${input.title}" is already in your list` };
+    }
+
+    const [created] = await db
+      .insert(media)
+      .values({
+        title: input.title,
+        type: input.type,
+        status: input.status ?? "plan",
+        coverImage: input.coverImage ?? null,
+        progress: input.progress ?? 0,
+        total: input.total ?? null,
+        rating: input.rating ?? null,
+        notes: input.notes ?? null,
+        userId: user.id,
+        anilistMediaId: input.anilistMediaId ?? null,
+        anilistSyncStatus: input.anilistMediaId ? "pending" : "idle",
+      })
+      .returning();
+
+    if (created.anilistMediaId) {
+      await enqueueMediaSync(user.id, created.id);
+    }
+
+    revalidatePath("/");
+
+    return { success: true, data: created as MediaItem };
+  } catch (error) {
+    console.error("Error creating media:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create entry",
+    };
+  }
 }
 
 // READ - Get a paginated media page for current user

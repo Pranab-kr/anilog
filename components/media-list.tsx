@@ -1,12 +1,7 @@
 "use client";
 
-import { ArrowUpDown, Check, Loader2, RefreshCw, Search } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { ArrowUpDown, Check, Loader2, Search } from "lucide-react";
 import type { MediaSort, MediaStatus } from "@/actions/media";
-import { AniListConnectButton } from "@/components/anilist-connect-button";
-import { AniListImportModal } from "@/components/anilist-import-modal";
-import { ClearListButton } from "@/components/clear-list-button";
 import { MediaCard } from "@/components/media-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,7 +19,6 @@ import {
 	PaginationNext,
 	PaginationPrevious,
 } from "@/components/ui/pagination";
-import { useAniList } from "@/hooks/use-anilist";
 import { cn } from "@/lib/utils";
 import { statusDisplayMap, useMediaStore } from "@/store/media-store";
 
@@ -133,75 +127,7 @@ export function MediaList() {
 		getFilteredMedia,
 	} = useMediaStore();
 
-	const { connection, loading: anilistLoading } = useAniList();
-	const [syncing, setSyncing] = useState(false);
-	const autoSyncedAfterConnect = useRef(false);
-
 	const pageItems = getFilteredMedia();
-
-	const syncFromAniListToLibrary = useCallback(async () => {
-		if (syncing) return;
-
-		setSyncing(true);
-		const { syncFromAniList, getAniListImportJob } = await import(
-			"@/actions/anilist-import"
-		);
-		const result = await syncFromAniList();
-
-		if (result.success && result.data) {
-			toast.success("AniList sync queued");
-			for (let attempt = 0; attempt < 200; attempt++) {
-				await new Promise((resolve) => setTimeout(resolve, 1500));
-				const job = await getAniListImportJob(result.data.jobId);
-				if (!job.success || !job.data) continue;
-
-				if (job.data.status === "completed") {
-					toast.success(
-						`Synced: ${job.data.imported} new, ${job.data.updated} updated`,
-					);
-					await fetchMedia();
-					setSyncing(false);
-					return;
-				}
-
-				if (job.data.status === "failed") {
-					toast.error(job.data.error ?? "Sync failed");
-					setSyncing(false);
-					return;
-				}
-			}
-
-			toast.warning("Sync is still running in the background");
-		} else {
-			toast.error(result.error ?? "Sync failed");
-		}
-
-		setSyncing(false);
-	}, [fetchMedia, syncing]);
-
-	useEffect(() => {
-		if (
-			autoSyncedAfterConnect.current ||
-			anilistLoading ||
-			!connection?.connected
-		) {
-			return;
-		}
-
-		const params = new URLSearchParams(window.location.search);
-		if (params.get("anilist") !== "connected") {
-			return;
-		}
-
-		autoSyncedAfterConnect.current = true;
-		params.delete("anilist");
-		params.delete("user");
-		const query = params.toString();
-		const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
-		window.history.replaceState({}, "", nextUrl);
-
-		void syncFromAniListToLibrary();
-	}, [anilistLoading, connection?.connected, syncFromAniListToLibrary]);
 
 	const getFilterLabel = (filter: FilterStatus): string => {
 		if (filter === "All") return "All";
@@ -223,7 +149,7 @@ export function MediaList() {
 
 	return (
 		<div className="space-y-6">
-			{/* ── Search + actions bar ── */}
+			{/* ── Search + sort bar ── */}
 			<div className="flex flex-col sm:flex-row gap-4 items-center justify-between max-w-4xl mx-auto w-full">
 				<div className="relative flex-1 w-full max-w-md">
 					<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -260,26 +186,6 @@ export function MediaList() {
 							))}
 						</DropdownMenuContent>
 					</DropdownMenu>
-
-					<AniListConnectButton />
-					{connection?.connected && (
-						<Button
-							variant="outline"
-							size="sm"
-							className="gap-1.5"
-							onClick={syncFromAniListToLibrary}
-							disabled={syncing || anilistLoading}
-						>
-							{syncing ? (
-								<Loader2 className="size-4 animate-spin" />
-							) : (
-								<RefreshCw className="size-4" />
-							)}
-							Sync
-						</Button>
-					)}
-					<AniListImportModal onImported={() => fetchMedia()} />
-					<ClearListButton onCleared={() => fetchMedia()} />
 				</div>
 			</div>
 

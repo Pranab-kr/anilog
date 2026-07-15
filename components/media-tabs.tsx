@@ -1,10 +1,11 @@
 "use client";
 
-import { Book, LogOut, Moon, Sun, Tv } from "lucide-react";
+import { Book, LogOut, Moon, Plus, Sun, Tv } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { MediaType } from "@/actions/media";
+import { AddMediaModal } from "@/components/add-media-modal";
 import { MediaList } from "@/components/media-list";
 import { FloatingDock } from "@/components/ui/floating-dock";
 import { authClient } from "@/lib/auth-client";
@@ -14,6 +15,7 @@ export function MediaTabs() {
 	const { activeMediaType, setActiveMediaType, fetchMedia } = useMediaStore();
 	const router = useRouter();
 	const { theme, setTheme } = useTheme();
+	const [searchOpen, setSearchOpen] = useState(false);
 
 	// Fetch media on initial mount
 	useEffect(() => {
@@ -35,6 +37,13 @@ export function MediaTabs() {
 	};
 
 	const items = [
+		{
+			title: "Search & Add",
+			icon: (
+				<Plus className="h-full w-full text-neutral-500 dark:text-neutral-300" />
+			),
+			onClick: () => setSearchOpen(true),
+		},
 		{
 			title: "Anime",
 			icon: (
@@ -74,6 +83,13 @@ export function MediaTabs() {
 				items={items}
 				desktopClassName="fixed bottom-8 left-1/2 -translate-x-1/2 z-50"
 				mobileClassName="fixed bottom-8 right-8 z-50"
+			/>
+
+			{/* Search & Add modal */}
+			<AddMediaModal
+				open={searchOpen}
+				onOpenChange={setSearchOpen}
+				defaultType={activeMediaType}
 			/>
 
 			{/* Single MediaList that reacts to activeMediaType changes */}
