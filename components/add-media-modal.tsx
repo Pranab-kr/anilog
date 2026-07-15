@@ -14,7 +14,7 @@ import {
 import { toast } from "sonner";
 import { searchAniList } from "@/actions/anilist-search";
 import type { AniListSearchResult } from "@/lib/anilist/types";
-import { enqueueAddMedia } from "@/actions/media";
+import { createMedia } from "@/actions/media";
 import type { MediaStatus, MediaType } from "@/actions/media";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,10 +62,12 @@ function pickTotal(r: AniListSearchResult) {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 function ResultCard({
   result,
+  adding,
   added,
   onAdd,
 }: {
   result: AniListSearchResult;
+  adding: boolean;
   added: boolean;
   onAdd: (result: AniListSearchResult) => void;
 }) {
@@ -80,7 +82,7 @@ function ResultCard({
         "hover:border-primary/40 hover:bg-primary/5 cursor-pointer",
         added && "border-green-500/40 bg-green-500/5",
       )}
-      onClick={() => !added && onAdd(result)}
+      onClick={() => !adding && !added && onAdd(result)}
     >
       {/* Cover */}
       <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border bg-muted">
@@ -130,6 +132,10 @@ function ResultCard({
           <div className="flex size-8 items-center justify-center rounded-full bg-green-500/20 text-green-600">
             <Check className="size-4" />
           </div>
+        ) : adding ? (
+          <div className="flex size-8 items-center justify-center">
+            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+          </div>
         ) : (
           <div className="flex size-8 items-center justify-center rounded-full border border-dashed border-muted-foreground/40 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
             <Plus className="size-4" />
@@ -155,6 +161,7 @@ function ModalContent({
   const [results, setResults] = useState<AniListSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [addingId, setAddingId] = useState<number | null>(null);
   const [addedIds, setAddedIds] = useState<Set<number>>(new Set());
   const [selectedStatus, setSelectedStatus] = useState<MediaStatus>("plan");
 
@@ -208,15 +215,11 @@ function ModalContent({
   };
 
   const handleAdd = async (result: AniListSearchResult) => {
-    if (addedIds.has(result.id)) return;
+    if (addingId !== null || addedIds.has(result.id)) return;
     const title = pickTitle(result);
 
-    // Optimistic: mark as added instantly — no spinner, no blocking wait
-    setAddedIds((prev) => new Set(prev).add(result.id));
-    toast.success(`Added "${title}" to your list`);
-
-    // Fire-and-forget via Inngest — returns in ~5ms (just event enqueue)
-    const res = await enqueueAddMedia({
+    setAddingId(result.id);
+    const res = await createMedia({
       title,
       type: result.type === "ANIME" ? "anime" : "manga",
       status: selectedStatus,
@@ -224,16 +227,16 @@ function ModalContent({
       total: pickTotal(result),
       anilistMediaId: result.id,
     });
+    setAddingId(null);
 
-    if (!res.success) {
-      // Revert optimistic state on failure
-      setAddedIds((prev) => { const s = new Set(prev); s.delete(result.id); return s; });
-      toast.error(res.error ?? "Failed to queue entry");
-      return;
+    if (res.success) {
+      setAddedIds((prev) => new Set(prev).add(result.id));
+      toast.success(`Added "${title}" to your list`);
+      // Refresh list in background — don't block the modal
+      void fetchMedia();
+    } else {
+      toast.error(res.error ?? "Failed to add entry");
     }
-
-    // Refresh the list in background after Inngest has had time to insert
-    setTimeout(() => { void fetchMedia(); }, 2500);
   };
 
   const hasResults = results.length > 0;
@@ -331,6 +334,7 @@ function ModalContent({
               <ResultCard
                 key={result.id}
                 result={result}
+                adding={addingId === result.id}
                 added={addedIds.has(result.id)}
                 onAdd={handleAdd}
               />
