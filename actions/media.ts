@@ -90,7 +90,33 @@ async function getCurrentUser() {
 }
 
 
-// CREATE - Add new media entry
+// ASYNC CREATE - Fire-and-forget via Inngest (non-blocking, no UI wait)
+export async function enqueueAddMedia(input: CreateMediaInput): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getCurrentUser();
+    await sendInngestEvent({
+      name: "media/add.requested",
+      data: {
+        userId: user.id,
+        title: input.title,
+        type: input.type,
+        status: input.status ?? "plan",
+        coverImage: input.coverImage ?? null,
+        total: input.total ?? null,
+        anilistMediaId: input.anilistMediaId ?? null,
+      },
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Error enqueuing add media:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to queue entry",
+    };
+  }
+}
+
+// CREATE - Add new media entry (synchronous, used for non-Inngest contexts)
 export async function createMedia(input: CreateMediaInput): Promise<{ success: boolean; data?: MediaItem; error?: string }> {
   try {
     const user = await getCurrentUser();
