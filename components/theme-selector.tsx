@@ -41,8 +41,8 @@ export function ThemeSelector() {
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[420px] p-6">
-          <DialogHeader className="pb-4">
+        <DialogContent className="sm:max-w-[360px] p-5">
+          <DialogHeader className="pb-3 border-b">
             <DialogTitle className="flex items-center gap-2 text-base font-semibold">
               <Palette className="size-5 text-primary" />
               Themes
@@ -52,39 +52,30 @@ export function ThemeSelector() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="rounded-xl border bg-[#16161e] border-border/80 text-[#a9b1d6] font-mono p-4 w-full space-y-4 shadow-xl">
-            <div className="text-[10px] text-muted-foreground/60 font-semibold uppercase tracking-wider px-1">
-              settings
-            </div>
-            <div className="bg-[#a7c080]/20 text-[#a7c080] font-bold px-2 py-0.5 rounded text-[10px] w-fit select-none">
-              theme
-            </div>
-
-            {/* Dark theme section */}
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground/45 tracking-widest uppercase py-1 select-none">
-                <span>dark</span>
-                <div className="h-px bg-border/20 flex-1" />
-              </div>
-              <div className="space-y-1">
-                {DARK_THEMES.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setTheme(t.id)}
-                    className={cn(
-                      "w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-left transition-all duration-150 font-mono cursor-pointer",
-                      theme === t.id
-                        ? "border border-white bg-white/10 text-white font-semibold shadow-md"
-                        : "border border-transparent text-[#a9b1d6] hover:bg-white/5"
-                    )}
-                  >
-                    <span>• {t.name}</span>
-                    {theme === t.id && <span className="text-xs font-bold">✓</span>}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* Theme list rendered directly in the Dialog content to avoid double backgrounds */}
+          <div className="space-y-1.5 pt-3">
+            {DARK_THEMES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTheme(t.id)}
+                className={cn(
+                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs text-left transition-all duration-150 cursor-pointer border font-medium",
+                  theme === t.id
+                    ? "border-primary bg-primary/10 text-primary shadow-sm"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                )}
+              >
+                <span className="flex items-center gap-2.5">
+                  <span className={cn(
+                    "size-1.5 rounded-full transition-all",
+                    theme === t.id ? "bg-primary scale-110 shadow-sm" : "bg-muted-foreground/40"
+                  )} />
+                  <span className="capitalize">{t.name}</span>
+                </span>
+                {theme === t.id && <span className="text-xs font-semibold">✓</span>}
+              </button>
+            ))}
           </div>
         </DialogContent>
       </Dialog>
