@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   if (!code) {
     return NextResponse.redirect(
-      new URL("/?anilist=error&reason=no_code", request.url),
+      new URL("/settings?anilist=error&reason=no_code", request.url),
     );
   }
 
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   if (!session) {
     return NextResponse.redirect(
-      new URL("/?anilist=error&reason=not_logged_in", request.url),
+      new URL("/settings?anilist=error&reason=not_logged_in", request.url),
     );
   }
 
@@ -42,12 +42,12 @@ export async function GET(request: NextRequest) {
       anilist: "connected",
       username: result.viewer.name,
     });
-    return NextResponse.redirect(new URL(`/?${params}`, request.url));
+    return NextResponse.redirect(new URL(`/settings?${params}`, request.url));
   }
 
   const params = new URLSearchParams({
     anilist: "error",
     reason: result.error ?? "unknown",
   });
-  return NextResponse.redirect(new URL(`/?${params}`, request.url));
+  return NextResponse.redirect(new URL(`/settings?${params}`, request.url));
 }

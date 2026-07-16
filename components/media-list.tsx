@@ -3,6 +3,7 @@
 import { ArrowUpDown, Check, Loader2, Search } from "lucide-react";
 import type { MediaSort, MediaStatus } from "@/actions/media";
 import { MediaCard } from "@/components/media-card";
+import { SyncButton } from "@/components/sync-button";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -161,6 +162,7 @@ export function MediaList() {
 					/>
 				</div>
 				<div className="flex items-center gap-2">
+					<SyncButton />
 					{/* Sort dropdown */}
 					<DropdownMenu>
 						<DropdownMenuTrigger>
