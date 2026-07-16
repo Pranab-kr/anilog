@@ -221,7 +221,7 @@ export function EditMediaModal({
 								htmlFor="edit-rating"
 								className="flex items-center gap-1.5"
 							>
-								<Star className="size-3.5 text-neutral-500 fill-gray-500" />
+								<Star className="size-3.5 text-neutral-500 fill-neutral-500" />
 								Rating (0 – 10)
 							</Label>
 							<div className="flex items-center gap-2">

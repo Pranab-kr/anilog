@@ -70,7 +70,7 @@ export function MediaCard({ item }: MediaCardProps) {
 
   return (
     <>
-      <Card className="group overflow-hidden border-none bg-card/40 transition-all hover:bg-card/60 hover:shadow-xl dark:bg-card/20">
+      <Card className="group overflow-hidden border-none bg-card/40 transition-all hover:bg-card/60 hover:shadow-xl dark:bg-card/20 py-0">
         <CardContent className="p-0">
           <div className="relative aspect-[3/4] overflow-hidden bg-muted">
             {coverImage ? (
