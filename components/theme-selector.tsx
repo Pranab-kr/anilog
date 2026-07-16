@@ -19,6 +19,7 @@ const DARK_THEMES = [
   { id: "tokyo-night", name: "tokyo night" },
   { id: "dracula", name: "dracula" },
   { id: "nord", name: "nord" },
+  { id: "gruvbox", name: "gruvbox" },
   { id: "kanagawa", name: "kanagawa" },
   { id: "rose-pine", name: "rose pine" },
   { id: "everforest", name: "everforest" },

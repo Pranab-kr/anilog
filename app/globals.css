@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *, .catppuccin *, .tokyo-night *, .dracula *, .nord *, .kanagawa *, .rose-pine *, .everforest *));
+@custom-variant dark (&:is(.dark *, .catppuccin *, .tokyo-night *, .dracula *, .nord *, .kanagawa *, .rose-pine *, .everforest *, .gruvbox *));
 
 @theme inline {
   --color-background: var(--background);
@@ -262,6 +262,27 @@
   --border: #475258;
   --input: #475258;
   --ring: #d699b6;
+}
+
+.gruvbox {
+  --background: #282828;
+  --foreground: #ebdbb2;
+  --card: #3c3836;
+  --card-foreground: #ebdbb2;
+  --popover: #3c3836;
+  --popover-foreground: #ebdbb2;
+  --primary: #fabd2f;
+  --primary-foreground: #282828;
+  --secondary: #504945;
+  --secondary-foreground: #ebdbb2;
+  --muted: #3c3836;
+  --muted-foreground: #a89984;
+  --accent: #83a598;
+  --accent-foreground: #282828;
+  --destructive: #fb4934;
+  --border: #665c54;
+  --input: #665c54;
+  --ring: #fabd2f;
 }
 
 @layer base {

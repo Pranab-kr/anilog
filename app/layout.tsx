@@ -44,6 +44,7 @@ export default function RootLayout({
             "kanagawa",
             "rose-pine",
             "everforest",
+            "gruvbox",
           ]}
           enableSystem={false}
           disableTransitionOnChange
