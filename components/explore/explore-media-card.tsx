@@ -58,7 +58,7 @@ export function ExploreMediaCard({
     }
 
     setIsActionLoading(true);
-    const { getMediaByAnilistId, enqueueAddMedia } = await import("@/actions/media");
+    const { getMediaByAnilistId, createMedia } = await import("@/actions/media");
     const { editMedia } = useMediaStore.getState();
 
     // Optimistically update UI status indicator dot instantly
@@ -83,8 +83,8 @@ export function ExploreMediaCard({
           void mutate("user-media-statuses"); // Revert
         }
       } else {
-        // Doesn't exist: use Inngest serverless to queue creation
-        const queueRes = await enqueueAddMedia({
+        // Doesn't exist: synchronously create the entry
+        const createRes = await createMedia({
           title,
           type: item.type === "MANGA" ? "manga" : "anime",
           status: statusToSet,
@@ -92,10 +92,10 @@ export function ExploreMediaCard({
           total: item.episodes ?? item.chapters ?? null,
           anilistMediaId: item.id,
         });
-        if (queueRes.success) {
+        if (createRes.success) {
           toast.success(`Added "${title}" to ${statusDisplayMap[statusToSet]}`);
         } else {
-          toast.error(queueRes.error || "Failed to add entry");
+          toast.error(createRes.error || "Failed to add entry");
           void mutate("user-media-statuses"); // Revert
         }
       }
