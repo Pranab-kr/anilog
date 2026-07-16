@@ -11,15 +11,12 @@ import {
 	Trash2,
 	Unlink,
 	LogOut,
-	Palette,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { mutate } from "swr";
-import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
-import { cn } from "@/lib/utils";
 import {
 	getAniListImportJob,
 	type ImportJob,
@@ -51,32 +48,6 @@ import { useMediaStore } from "@/store/media-store";
 
 const CONFIRM_WORD = "DELETE";
 
-const DARK_THEMES = [
-	{ id: "dark", name: "default dark" },
-	{ id: "catppuccin", name: "catppuccin" },
-	{ id: "terminal", name: "terminal" },
-	{ id: "tokyo-night", name: "tokyo night" },
-	{ id: "dracula", name: "dracula" },
-	{ id: "nord", name: "nord" },
-	{ id: "gruvbox", name: "gruvbox" },
-	{ id: "one-dark", name: "one dark" },
-	{ id: "solarized", name: "solarized" },
-	{ id: "kanagawa", name: "kanagawa" },
-	{ id: "rose-pine", name: "rose pine" },
-	{ id: "vesper", name: "vesper" },
-];
-
-const LIGHT_THEMES = [
-	{ id: "light", name: "default light" },
-	{ id: "catppuccin-latte", name: "catppuccin latte" },
-	{ id: "tokyo-day", name: "tokyo day" },
-	{ id: "gruvbox-light", name: "gruvbox light" },
-	{ id: "one-light", name: "one light" },
-	{ id: "solarized-light", name: "solarized light" },
-	{ id: "kanagawa-lotus", name: "kanagawa lotus" },
-	{ id: "rose-pine-dawn", name: "rose pine dawn" },
-];
-
 export function SettingsForm() {
 	const {
 		connection,
@@ -85,7 +56,6 @@ export function SettingsForm() {
 		disconnect,
 	} = useAniList();
 	const { fetchMedia } = useMediaStore();
-	const { theme, setTheme } = useTheme();
 	const router = useRouter();
 
 	const [loggingOut, setLoggingOut] = useState(false);
@@ -402,69 +372,6 @@ export function SettingsForm() {
 						)}
 					</CardFooter>
 				)}
-			</Card>
-
-			{/* Card 2: Themes */}
-			<Card className="border border-border">
-				<CardHeader>
-					<CardTitle className="text-lg font-semibold flex items-center gap-2">
-						<Palette className="size-5" />
-						Themes
-					</CardTitle>
-					<CardDescription>
-						Select your preferred application color theme.
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<div className="rounded-xl border bg-[#16161e] border-border/80 text-[#a9b1d6] font-mono p-4 max-w-md w-full space-y-4 shadow-xl">
-						<div className="text-[10px] text-muted-foreground/60 font-semibold uppercase tracking-wider px-1">settings</div>
-						<div className="bg-primary/20 text-primary font-bold px-2 py-0.5 rounded text-[10px] w-fit">theme</div>
-
-						{/* Dark theme section */}
-						<div className="space-y-1">
-							<div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground/40 tracking-widest uppercase py-1">
-								<span>dark</span>
-								<div className="h-px bg-border/20 flex-1" />
-							</div>
-							{DARK_THEMES.map((t) => (
-								<button
-									key={t.id}
-									type="button"
-									onClick={() => setTheme(t.id)}
-									className={cn(
-										"w-full flex items-center justify-between px-2.5 py-1 rounded text-xs text-left transition-all hover:bg-white/5 font-mono cursor-pointer border-none",
-										theme === t.id && "bg-white/10 text-white font-semibold"
-									)}
-								>
-									<span>• {t.name}</span>
-									{theme === t.id && <span className="text-xs">✓</span>}
-								</button>
-							))}
-						</div>
-
-						{/* Light theme section */}
-						<div className="space-y-1">
-							<div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground/40 tracking-widest uppercase py-1">
-								<span>light</span>
-								<div className="h-px bg-border/20 flex-1" />
-							</div>
-							{LIGHT_THEMES.map((t) => (
-								<button
-									key={t.id}
-									type="button"
-									onClick={() => setTheme(t.id)}
-									className={cn(
-										"w-full flex items-center justify-between px-2.5 py-1 rounded text-xs text-left transition-all hover:bg-white/5 font-mono cursor-pointer border-none",
-										theme === t.id && "bg-white/10 text-white font-semibold"
-									)}
-								>
-									<span>• {t.name}</span>
-									{theme === t.id && <span className="text-xs">✓</span>}
-								</button>
-							))}
-						</div>
-					</div>
-				</CardContent>
 			</Card>
 
 			{/* Card 2: Import Library */}
