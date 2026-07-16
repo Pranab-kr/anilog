@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	AlertTriangle,
 	AtSign,
@@ -11,8 +10,22 @@ import {
 	RefreshCw,
 	Trash2,
 	Unlink,
+	LogOut,
+	Palette,
 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { mutate } from "swr";
+import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
+import {
+	getAniListImportJob,
+	type ImportJob,
+	importPublicAniListList,
+} from "@/actions/anilist-import";
+import { deleteAllMedia } from "@/actions/media";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -35,19 +48,62 @@ import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { useAniList } from "@/hooks/use-anilist";
 import { useMediaStore } from "@/store/media-store";
-import { deleteAllMedia } from "@/actions/media";
-import { mutate } from "swr";
-import {
-	getAniListImportJob,
-	importPublicAniListList,
-	type ImportJob,
-} from "@/actions/anilist-import";
 
 const CONFIRM_WORD = "DELETE";
 
+const DARK_THEMES = [
+	{ id: "dark", name: "default dark" },
+	{ id: "catppuccin", name: "catppuccin" },
+	{ id: "terminal", name: "terminal" },
+	{ id: "tokyo-night", name: "tokyo night" },
+	{ id: "dracula", name: "dracula" },
+	{ id: "nord", name: "nord" },
+	{ id: "gruvbox", name: "gruvbox" },
+	{ id: "one-dark", name: "one dark" },
+	{ id: "solarized", name: "solarized" },
+	{ id: "kanagawa", name: "kanagawa" },
+	{ id: "rose-pine", name: "rose pine" },
+	{ id: "vesper", name: "vesper" },
+];
+
+const LIGHT_THEMES = [
+	{ id: "light", name: "default light" },
+	{ id: "catppuccin-latte", name: "catppuccin latte" },
+	{ id: "tokyo-day", name: "tokyo day" },
+	{ id: "gruvbox-light", name: "gruvbox light" },
+	{ id: "one-light", name: "one light" },
+	{ id: "solarized-light", name: "solarized light" },
+	{ id: "kanagawa-lotus", name: "kanagawa lotus" },
+	{ id: "rose-pine-dawn", name: "rose pine dawn" },
+];
+
 export function SettingsForm() {
-	const { connection, configured, loading: anilistLoading, disconnect } = useAniList();
+	const {
+		connection,
+		configured,
+		loading: anilistLoading,
+		disconnect,
+	} = useAniList();
 	const { fetchMedia } = useMediaStore();
+	const { theme, setTheme } = useTheme();
+	const router = useRouter();
+
+	const [loggingOut, setLoggingOut] = useState(false);
+
+	const handleLogout = async () => {
+		setLoggingOut(true);
+		await authClient.signOut({
+			fetchOptions: {
+				onSuccess: () => {
+					router.push("/login");
+				},
+				onError: (ctx) => {
+					toast.error(ctx.error.message || "Failed to sign out");
+					setLoggingOut(false);
+				},
+			},
+		});
+	};
 
 	// Disconnect states
 	const [disconnecting, setDisconnecting] = useState(false);
@@ -222,7 +278,9 @@ export function SettingsForm() {
 		setIsDeleting(false);
 
 		if (result.success) {
-			toast.success(`Cleared ${result.deleted} ${result.deleted === 1 ? "entry" : "entries"} from your list`);
+			toast.success(
+				`Cleared ${result.deleted} ${result.deleted === 1 ? "entry" : "entries"} from your list`,
+			);
 			setClearDialogOpen(false);
 			setConfirmText("");
 			await fetchMedia();
@@ -253,7 +311,8 @@ export function SettingsForm() {
 						AniList Sync
 					</CardTitle>
 					<CardDescription>
-						Link your AniList account to enable write-through sync. Your local progress updates will update AniList automatically.
+						Link your AniList account to enable write-through sync. Your local
+						progress updates will update AniList automatically.
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
@@ -269,7 +328,9 @@ export function SettingsForm() {
 								Credentials Missing
 							</p>
 							<p className="text-xs mt-1">
-								AniList client details are not configured in your environmental variables. Ensure <code>ANILIST_CLIENT_ID</code> and <code>ANILIST_CLIENT_SECRET</code> are set.
+								AniList client details are not configured in your environmental
+								variables. Ensure <code>ANILIST_CLIENT_ID</code> and{" "}
+								<code>ANILIST_CLIENT_SECRET</code> are set.
 							</p>
 						</div>
 					) : connection?.connected ? (
@@ -278,7 +339,10 @@ export function SettingsForm() {
 								<div className="space-y-1">
 									<div className="text-sm font-medium">Account Linked</div>
 									<div className="text-xs text-muted-foreground">
-										Connected as <span className="font-semibold text-foreground">@{connection.username}</span>
+										Connected as{" "}
+										<span className="font-semibold text-foreground">
+											@{connection.username}
+										</span>
 									</div>
 								</div>
 								<div className="flex items-center gap-2">
@@ -295,7 +359,9 @@ export function SettingsForm() {
 										onClick={syncFromAniListToLibrary}
 										disabled={syncing}
 									>
-										<RefreshCw className={`size-3.5 ${syncing ? "animate-spin" : ""}`} />
+										<RefreshCw
+											className={`size-3.5 ${syncing ? "animate-spin" : ""}`}
+										/>
 										Sync Now
 									</Button>
 								</div>
@@ -338,6 +404,69 @@ export function SettingsForm() {
 				)}
 			</Card>
 
+			{/* Card 2: Themes */}
+			<Card className="border border-border">
+				<CardHeader>
+					<CardTitle className="text-lg font-semibold flex items-center gap-2">
+						<Palette className="size-5" />
+						Themes
+					</CardTitle>
+					<CardDescription>
+						Select your preferred application color theme.
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<div className="rounded-xl border bg-[#16161e] border-border/80 text-[#a9b1d6] font-mono p-4 max-w-md w-full space-y-4 shadow-xl">
+						<div className="text-[10px] text-muted-foreground/60 font-semibold uppercase tracking-wider px-1">settings</div>
+						<div className="bg-primary/20 text-primary font-bold px-2 py-0.5 rounded text-[10px] w-fit">theme</div>
+
+						{/* Dark theme section */}
+						<div className="space-y-1">
+							<div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground/40 tracking-widest uppercase py-1">
+								<span>dark</span>
+								<div className="h-px bg-border/20 flex-1" />
+							</div>
+							{DARK_THEMES.map((t) => (
+								<button
+									key={t.id}
+									type="button"
+									onClick={() => setTheme(t.id)}
+									className={cn(
+										"w-full flex items-center justify-between px-2.5 py-1 rounded text-xs text-left transition-all hover:bg-white/5 font-mono cursor-pointer border-none",
+										theme === t.id && "bg-white/10 text-white font-semibold"
+									)}
+								>
+									<span>• {t.name}</span>
+									{theme === t.id && <span className="text-xs">✓</span>}
+								</button>
+							))}
+						</div>
+
+						{/* Light theme section */}
+						<div className="space-y-1">
+							<div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground/40 tracking-widest uppercase py-1">
+								<span>light</span>
+								<div className="h-px bg-border/20 flex-1" />
+							</div>
+							{LIGHT_THEMES.map((t) => (
+								<button
+									key={t.id}
+									type="button"
+									onClick={() => setTheme(t.id)}
+									className={cn(
+										"w-full flex items-center justify-between px-2.5 py-1 rounded text-xs text-left transition-all hover:bg-white/5 font-mono cursor-pointer border-none",
+										theme === t.id && "bg-white/10 text-white font-semibold"
+									)}
+								>
+									<span>• {t.name}</span>
+									{theme === t.id && <span className="text-xs">✓</span>}
+								</button>
+							))}
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+
 			{/* Card 2: Import Library */}
 			<Card className="border border-border">
 				<CardHeader>
@@ -346,7 +475,8 @@ export function SettingsForm() {
 						Import AniList Library
 					</CardTitle>
 					<CardDescription>
-						Import anime and manga lists from any public AniList username. This will merge items into your current local database.
+						Import anime and manga lists from any public AniList username. This
+						will merge items into your current local database.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
@@ -369,7 +499,7 @@ export function SettingsForm() {
 						<Button
 							type="submit"
 							size="sm"
-							className="gap-1.5 text-xs shrink-0"
+							className="gap-1.5 text-sm shrink-0"
 							disabled={importLoading || !importUsername.trim()}
 						>
 							{importLoading ? (
@@ -405,17 +535,24 @@ export function SettingsForm() {
 								</span>
 							</div>
 							<p className="text-xs text-muted-foreground">
-								<span className="text-green-600 font-medium">{importResult.imported} new entries</span>
+								<span className="text-green-600 font-medium">
+									{importResult.imported} new entries
+								</span>
 								{" · "}
-								<span className="text-blue-600 font-medium">{importResult.updated} updated</span>
+								<span className="text-blue-600 font-medium">
+									{importResult.updated} updated
+								</span>
 							</p>
 							{importResult.errors && (
 								<div className="space-y-1 text-destructive text-xs pt-1.5 border-t">
 									<p className="font-medium">Skipped items details:</p>
 									<ul className="list-disc space-y-0.5 pl-4">
-										{importResult.errors.split("\n").slice(0, 3).map((message, idx) => (
-											<li key={idx}>{message}</li>
-										))}
+										{importResult.errors
+											.split("\n")
+											.slice(0, 3)
+											.map((message, idx) => (
+												<li key={idx}>{message}</li>
+											))}
 									</ul>
 								</div>
 							)}
@@ -429,9 +566,12 @@ export function SettingsForm() {
 								<span>Error during Import</span>
 							</div>
 							<ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-xs">
-								{importError.split("\n").slice(0, 4).map((message, idx) => (
-									<li key={idx}>{message}</li>
-								))}
+								{importError
+									.split("\n")
+									.slice(0, 4)
+									.map((message, idx) => (
+										<li key={idx}>{message}</li>
+									))}
 							</ul>
 						</div>
 					)}
@@ -446,13 +586,20 @@ export function SettingsForm() {
 						Danger Zone
 					</CardTitle>
 					<CardDescription className="text-destructive/80">
-						Erase your library. This actions is destructive and cannot be reversed.
+						Erase your library. This actions is destructive and cannot be
+						reversed.
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<div className="text-xs text-destructive/85 space-y-1">
-						<p>This will delete all anime and manga entries saved in your local database profile.</p>
-						<p className="font-medium">Important: Your AniList profile is hosted by AniList and will not be affected. You can sync or re-import your library at any time.</p>
+						<p>
+							This will delete all anime and manga entries saved in your local
+							database profile.
+						</p>
+						<p className="font-medium">
+							Important: Your AniList profile is hosted by AniList and will not
+							be affected. You can sync or re-import your library at any time.
+						</p>
 					</div>
 				</CardContent>
 				<CardFooter className="border-t border-destructive/10 bg-destructive/5 justify-end py-3">
@@ -468,6 +615,43 @@ export function SettingsForm() {
 				</CardFooter>
 			</Card>
 
+			{/* Card 5: Account Settings / Logout */}
+			<Card className="border border-border">
+				<CardHeader>
+					<CardTitle className="text-lg font-semibold flex items-center gap-2">
+						<LogOut className="size-5" />
+						Account
+					</CardTitle>
+					<CardDescription>
+						Manage your signed-in session on this device.
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<p className="text-xs text-muted-foreground mb-4">
+						You are currently logged in. Click below to sign out and return to the login screen.
+					</p>
+					<Button
+						variant="destructive"
+						size="sm"
+						onClick={handleLogout}
+						disabled={loggingOut}
+						className="gap-1.5 text-xs"
+					>
+						{loggingOut ? (
+							<>
+								<Loader2 className="size-3.5 animate-spin" />
+								Signing out...
+							</>
+						) : (
+							<>
+								<LogOut className="size-3.5" />
+								Logout
+							</>
+						)}
+					</Button>
+				</CardContent>
+			</Card>
+
 			{/* Clear List Confirmation Dialog */}
 			<Dialog open={clearDialogOpen} onOpenChange={handleOpenClearDialogChange}>
 				<DialogContent className="sm:max-w-[420px]">
@@ -476,11 +660,16 @@ export function SettingsForm() {
 							<div className="flex size-10 items-center justify-center rounded-full bg-destructive/10">
 								<AlertTriangle className="size-5 text-destructive" />
 							</div>
-							<DialogTitle className="text-left text-base font-semibold">Clear entire list?</DialogTitle>
+							<DialogTitle className="text-left text-base font-semibold">
+								Clear entire list?
+							</DialogTitle>
 						</div>
 						<DialogDescription className="text-left text-xs/relaxed space-y-2">
 							<span className="block">
-								This will permanently delete <strong>all entries</strong> from your local library. Your AniList account is <strong>not affected</strong> — you can re-import everything fresh afterwards.
+								This will permanently delete <strong>all entries</strong> from
+								your local library. Your AniList account is{" "}
+								<strong>not affected</strong> — you can re-import everything
+								fresh afterwards.
 							</span>
 							<span className="block text-destructive font-medium">
 								This action is permanent and cannot be undone.
@@ -489,8 +678,15 @@ export function SettingsForm() {
 					</DialogHeader>
 
 					<div className="space-y-2 py-2">
-						<Label htmlFor="confirm-delete" className="text-xs text-muted-foreground">
-							Type <span className="font-mono font-bold text-foreground">{CONFIRM_WORD}</span> to confirm
+						<Label
+							htmlFor="confirm-delete"
+							className="text-xs text-muted-foreground"
+						>
+							Type{" "}
+							<span className="font-mono font-bold text-foreground">
+								{CONFIRM_WORD}
+							</span>{" "}
+							to confirm
 						</Label>
 						<Input
 							id="confirm-delete"

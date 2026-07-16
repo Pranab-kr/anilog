@@ -1,20 +1,17 @@
 "use client";
 
-import { Book, Compass, LogOut, Moon, Plus, Sun, Tv } from "lucide-react";
+import { Book, Compass, Plus, Tv } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import type { MediaType } from "@/actions/media";
 import { AddMediaModal } from "@/components/add-media-modal";
 import { MediaList } from "@/components/media-list";
 import { FloatingDock } from "@/components/ui/floating-dock";
-import { authClient } from "@/lib/auth-client";
 import { useMediaStore } from "@/store/media-store";
 
 export function MediaTabs() {
 	const { activeMediaType, setActiveMediaType, fetchMedia } = useMediaStore();
 	const router = useRouter();
-	const { theme, setTheme } = useTheme();
 	const [searchOpen, setSearchOpen] = useState(false);
 
 	// Fetch media on initial mount
@@ -24,16 +21,6 @@ export function MediaTabs() {
 
 	const handleTabChange = (value: string) => {
 		setActiveMediaType(value as MediaType);
-	};
-
-	const handleLogout = async () => {
-		await authClient.signOut({
-			fetchOptions: {
-				onSuccess: () => {
-					router.push("/login");
-				},
-			},
-		});
 	};
 
 	const items = [
@@ -59,28 +46,11 @@ export function MediaTabs() {
 			onClick: () => handleTabChange("manga"),
 		},
 		{
-			title: theme === "dark" ? "Light Mode" : "Dark Mode",
-			icon:
-				theme === "dark" ? (
-					<Sun className="h-full w-full text-neutral-500 dark:text-neutral-300" />
-				) : (
-					<Moon className="h-full w-full text-neutral-500 dark:text-neutral-300" />
-				),
-			onClick: () => setTheme(theme === "dark" ? "light" : "dark"),
-		},
-		{
 			title: "Explore",
 			icon: (
 				<Compass className="h-full w-full text-neutral-500 dark:text-neutral-300" />
 			),
 			onClick: () => router.push("/explore"),
-		},
-		{
-			title: "Logout",
-			icon: (
-				<LogOut className="h-full w-full text-neutral-500 dark:text-neutral-300" />
-			),
-			onClick: handleLogout,
 		},
 	];
 

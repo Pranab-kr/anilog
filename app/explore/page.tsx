@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { HeaderActions } from "@/components/header-actions";
 import { ExploreHub } from "@/components/explore/explore-hub";
 import { ExploreFloatingDock } from "@/components/explore/explore-floating-dock";
@@ -33,7 +32,6 @@ export default async function ExplorePage() {
           {/* Right actions */}
           <div className="flex items-center gap-1 sm:gap-2 min-w-0">
             <HeaderActions />
-            <ThemeToggle />
             <div className="hidden sm:block text-sm text-muted-foreground truncate max-w-[120px]">
               {session.user.name}
             </div>

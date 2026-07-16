@@ -31,7 +31,34 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          themes={[
+            "light",
+            "dark",
+            "catppuccin",
+            "terminal",
+            "tokyo-night",
+            "dracula",
+            "nord",
+            "gruvbox",
+            "one-dark",
+            "solarized",
+            "kanagawa",
+            "rose-pine",
+            "vesper",
+            "catppuccin-latte",
+            "tokyo-day",
+            "gruvbox-light",
+            "one-light",
+            "solarized-light",
+            "kanagawa-lotus",
+            "rose-pine-dawn",
+          ]}
+          enableSystem={false}
+          disableTransitionOnChange
+        >
           {children}
           <Toaster richColors position="bottom-right" />
         </ThemeProvider>

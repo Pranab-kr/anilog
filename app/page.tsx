@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { HeaderActions } from "@/components/header-actions";
 import { MediaTabs } from "@/components/media-tabs";
 
@@ -27,7 +26,6 @@ export default async function mainPage() {
           {/* Right side — actions collapse gracefully on mobile */}
           <div className="flex items-center gap-1 sm:gap-2 min-w-0">
             <HeaderActions />
-            <ThemeToggle />
             {/* Username — hidden on very small screens */}
             <div className="hidden sm:block text-sm text-muted-foreground truncate max-w-[120px]">
               {session.user.name}
