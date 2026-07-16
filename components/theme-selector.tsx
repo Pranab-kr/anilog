@@ -56,7 +56,7 @@ export function ThemeSelector() {
             <div className="text-[10px] text-muted-foreground/60 font-semibold uppercase tracking-wider px-1">
               settings
             </div>
-            <div className="bg-primary/20 text-primary font-bold px-2 py-0.5 rounded text-[10px] w-fit">
+            <div className="bg-[#a7c080]/20 text-[#a7c080] font-bold px-2 py-0.5 rounded text-[10px] w-fit select-none">
               theme
             </div>
 
@@ -66,20 +66,24 @@ export function ThemeSelector() {
                 <span>dark</span>
                 <div className="h-px bg-border/20 flex-1" />
               </div>
-              {DARK_THEMES.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTheme(t.id)}
-                  className={cn(
-                    "w-full flex items-center justify-between px-2.5 py-1 rounded text-xs text-left transition-all hover:bg-white/5 font-mono cursor-pointer border-none",
-                    theme === t.id && "bg-white/10 text-white font-semibold"
-                  )}
-                >
-                  <span>• {t.name}</span>
-                  {theme === t.id && <span className="text-xs">✓</span>}
-                </button>
-              ))}
+              <div className="space-y-1">
+                {DARK_THEMES.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTheme(t.id)}
+                    className={cn(
+                      "w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-left transition-all duration-150 font-mono cursor-pointer",
+                      theme === t.id
+                        ? "border border-white bg-white/10 text-white font-semibold shadow-md"
+                        : "border border-transparent text-[#a9b1d6] hover:bg-white/5"
+                    )}
+                  >
+                    <span>• {t.name}</span>
+                    {theme === t.id && <span className="text-xs font-bold">✓</span>}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </DialogContent>
