@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *, .catppuccin *, .tokyo-night *, .dracula *, .nord *, .kanagawa *, .rose-pine *, .everforest *, .gruvbox *));
+@custom-variant dark (&:where(.dark, .dark *, .catppuccin, .catppuccin *, .tokyo-night, .tokyo-night *, .dracula, .dracula *, .nord, .nord *, .kanagawa, .kanagawa *, .rose-pine, .rose-pine *, .everforest, .everforest *, .gruvbox, .gruvbox *));
 
 @theme inline {
   --color-background: var(--background);
