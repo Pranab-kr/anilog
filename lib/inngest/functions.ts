@@ -276,11 +276,17 @@ export const addMediaEntry = inngest.createFunction(
         if (existing) return { skipped: true, reason: "duplicate_anilist_id" };
       }
 
-      // Duplicate check by title
+      // Duplicate check by title and type
       const [existingByTitle] = await db
         .select({ id: media.id })
         .from(media)
-        .where(and(eq(media.userId, payload.userId), eq(media.title, payload.title)));
+        .where(
+          and(
+            eq(media.userId, payload.userId),
+            eq(media.title, payload.title),
+            eq(media.type, payload.type),
+          ),
+        );
       if (existingByTitle) return { skipped: true, reason: "duplicate_title" };
 
       const [row] = await db

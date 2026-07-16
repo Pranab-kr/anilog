@@ -58,28 +58,33 @@ export function ExploreMediaCard({
     }
 
     setIsActionLoading(true);
-    const { getMediaByAnilistId, createMedia } = await import("@/actions/media");
+    const { getMediaByAnilistId, enqueueAddMedia } = await import("@/actions/media");
     const { editMedia } = useMediaStore.getState();
+
+    // Optimistically update UI status indicator dot instantly
+    void mutate("user-media-statuses", (curr: any) => ({
+      ...curr,
+      [item.id]: statusToSet
+    }), false);
 
     try {
       // Check if it already exists in the list
       const res = await getMediaByAnilistId(item.id);
       if (res.success && res.data) {
-        // Exists: update status
+        // Exists: update status via editMedia
         const editRes = await editMedia({
           id: res.data.id,
           status: statusToSet,
         });
         if (editRes.success) {
           toast.success(`Updated "${title}" to ${statusDisplayMap[statusToSet]}`);
-          void mutate("user-media-statuses");
-          void fetchMedia();
         } else {
           toast.error(editRes.error || "Failed to update entry");
+          void mutate("user-media-statuses"); // Revert
         }
       } else {
-        // Doesn't exist: create new entry
-        const createRes = await createMedia({
+        // Doesn't exist: use Inngest serverless to queue creation
+        const queueRes = await enqueueAddMedia({
           title,
           type: item.type === "MANGA" ? "manga" : "anime",
           status: statusToSet,
@@ -87,17 +92,25 @@ export function ExploreMediaCard({
           total: item.episodes ?? item.chapters ?? null,
           anilistMediaId: item.id,
         });
-        if (createRes.success) {
+        if (queueRes.success) {
           toast.success(`Added "${title}" to ${statusDisplayMap[statusToSet]}`);
-          void mutate("user-media-statuses");
-          void fetchMedia();
         } else {
-          toast.error(createRes.error || "Failed to add entry");
+          toast.error(queueRes.error || "Failed to add entry");
+          void mutate("user-media-statuses"); // Revert
         }
       }
+
+      // Revalidate store & SWR cache
+      void mutate("user-media-statuses");
+      void fetchMedia();
+      setTimeout(() => {
+        void mutate("user-media-statuses");
+        void fetchMedia();
+      }, 1500);
     } catch (err) {
       console.error("Quick action error:", err);
       toast.error("An error occurred during quick action");
+      void mutate("user-media-statuses"); // Revert
     } finally {
       setIsActionLoading(false);
     }
@@ -158,60 +171,79 @@ export function ExploreMediaCard({
         )}
 
         {/* Hover: Quick Actions Column (Play, Check, Calendar, Pencil) */}
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20">
-          <button
-            className={cn(
-              "size-8 rounded-full bg-black/70 hover:bg-primary text-white flex items-center justify-center transition-all cursor-pointer shadow-md",
-              userStatus === "watching" && "ring-2 ring-blue-400 bg-blue-500/80"
-            )}
-            title="Set to Watching"
-            disabled={isActionLoading}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleQuickAction("watching");
-            }}
-          >
-            <Play className="size-3.5 fill-white text-white" />
-          </button>
-          <button
-            className={cn(
-              "size-8 rounded-full bg-black/70 hover:bg-primary text-white flex items-center justify-center transition-all cursor-pointer shadow-md",
-              userStatus === "completed" && "ring-2 ring-green-400 bg-green-500/80"
-            )}
-            title="Set to Completed"
-            disabled={isActionLoading}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleQuickAction("completed");
-            }}
-          >
-            <Check className="size-3.5 text-white" />
-          </button>
-          <button
-            className={cn(
-              "size-8 rounded-full bg-black/70 hover:bg-primary text-white flex items-center justify-center transition-all cursor-pointer shadow-md",
-              userStatus === "plan" && "ring-2 ring-yellow-400 bg-yellow-500/80"
-            )}
-            title="Plan to Watch"
-            disabled={isActionLoading}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleQuickAction("plan");
-            }}
-          >
-            <Calendar className="size-3.5 text-white" />
-          </button>
-          <button
-            className="size-8 rounded-full bg-black/70 hover:bg-primary text-white flex items-center justify-center transition-all cursor-pointer shadow-md"
-            title="Edit detailed entry"
-            disabled={isActionLoading}
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddToList?.(item);
-            }}
-          >
-            <Pencil className="size-3.5 text-white" />
-          </button>
+        <div className="absolute right-2 bottom-3 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20">
+          <div className="relative flex items-center justify-end group/btn">
+            <span className="absolute right-full mr-2 px-2.5 py-1 bg-black/85 backdrop-blur-sm text-white text-[11px] font-semibold rounded pointer-events-none opacity-0 group-hover/btn:opacity-100 transition-opacity duration-200 whitespace-nowrap shadow-lg select-none">
+              Set to Watching
+            </span>
+            <button
+              className={cn(
+                "size-8 rounded-full bg-black/75 text-white flex items-center justify-center transition-all cursor-pointer shadow-md hover:scale-110 duration-200",
+                userStatus === "watching" && "ring-2 ring-blue-400 bg-blue-500/80"
+              )}
+              disabled={isActionLoading}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleQuickAction("watching");
+              }}
+            >
+              <Play className="size-3.5 fill-white text-white" />
+            </button>
+          </div>
+
+          <div className="relative flex items-center justify-end group/btn">
+            <span className="absolute right-full mr-2 px-2.5 py-1 bg-black/85 backdrop-blur-sm text-white text-[11px] font-semibold rounded pointer-events-none opacity-0 group-hover/btn:opacity-100 transition-opacity duration-200 whitespace-nowrap shadow-lg select-none">
+              Set to Completed
+            </span>
+            <button
+              className={cn(
+                "size-8 rounded-full bg-black/75 text-white flex items-center justify-center transition-all cursor-pointer shadow-md hover:scale-110 duration-200",
+                userStatus === "completed" && "ring-2 ring-green-400 bg-green-500/80"
+              )}
+              disabled={isActionLoading}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleQuickAction("completed");
+              }}
+            >
+              <Check className="size-3.5 text-white" />
+            </button>
+          </div>
+
+          <div className="relative flex items-center justify-end group/btn">
+            <span className="absolute right-full mr-2 px-2.5 py-1 bg-black/85 backdrop-blur-sm text-white text-[11px] font-semibold rounded pointer-events-none opacity-0 group-hover/btn:opacity-100 transition-opacity duration-200 whitespace-nowrap shadow-lg select-none">
+              Plan to Watch
+            </span>
+            <button
+              className={cn(
+                "size-8 rounded-full bg-black/75 text-white flex items-center justify-center transition-all cursor-pointer shadow-md hover:scale-110 duration-200",
+                userStatus === "plan" && "ring-2 ring-yellow-400 bg-yellow-500/80"
+              )}
+              disabled={isActionLoading}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleQuickAction("plan");
+              }}
+            >
+              <Calendar className="size-3.5 text-white" />
+            </button>
+          </div>
+
+          <div className="relative flex items-center justify-end group/btn">
+            <span className="absolute right-full mr-2 px-2.5 py-1 bg-black/85 backdrop-blur-sm text-white text-[11px] font-semibold rounded pointer-events-none opacity-0 group-hover/btn:opacity-100 transition-opacity duration-200 whitespace-nowrap shadow-lg select-none">
+              Edit Entry
+            </span>
+            <button
+              className="size-8 rounded-full bg-black/75 text-white flex items-center justify-center transition-all cursor-pointer shadow-md hover:scale-110 duration-200"
+              disabled={isActionLoading}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToList?.(item);
+              }}
+            >
+              <Pencil className="size-3.5 text-white" />
+            </button>
+          </div>
         </div>
       </div>
 
