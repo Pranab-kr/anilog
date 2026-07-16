@@ -133,11 +133,17 @@ export async function createMedia(input: CreateMediaInput): Promise<{ success: b
       }
     }
 
-    // Check for duplicate by title
+    // Check for duplicate by title and type
     const [existingByTitle] = await db
       .select()
       .from(media)
-      .where(and(eq(media.userId, user.id), eq(media.title, input.title)));
+      .where(
+        and(
+          eq(media.userId, user.id),
+          eq(media.title, input.title),
+          eq(media.type, input.type)
+        )
+      );
 
     if (existingByTitle) {
       return { success: false, error: `"${input.title}" is already in your list` };
@@ -305,7 +311,13 @@ export async function updateMedia(input: UpdateMediaInput): Promise<{ success: b
       const [duplicateMedia] = await db
         .select()
         .from(media)
-        .where(and(eq(media.title, input.title), eq(media.userId, user.id)));
+        .where(
+          and(
+            eq(media.title, input.title),
+            eq(media.userId, user.id),
+            eq(media.type, input.type ?? existing.type)
+          )
+        );
 
       if (duplicateMedia) {
         return {

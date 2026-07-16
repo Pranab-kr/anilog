@@ -1,12 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
-import { Star, Play, BookOpen, Clock } from "lucide-react";
+import { Star, Play, BookOpen, Clock, Check, Calendar, Pencil } from "lucide-react";
+import { toast } from "sonner";
+import { mutate } from "swr";
 import { cn } from "@/lib/utils";
 import type { ExploreMediaItem } from "@/actions/explore";
 import { Badge } from "@/components/ui/badge";
 import { useUserMediaStatuses } from "@/hooks/use-user-media-statuses";
-import { statusDisplayMap } from "@/store/media-store";
+import { statusDisplayMap, useMediaStore } from "@/store/media-store";
 import type { MediaStatus } from "@/actions/media";
 
 interface ExploreMediaCardProps {
@@ -34,6 +37,10 @@ export function ExploreMediaCard({
   const cover = item.coverImage.extraLarge ?? item.coverImage.large;
   const isAnime = item.type === "ANIME";
 
+  const [isActionLoading, setIsActionLoading] = useState(false);
+
+  const { fetchMedia } = useMediaStore();
+
   const statusColor: Record<string, string> = {
     watching: "bg-blue-500",
     completed: "bg-green-500",
@@ -41,6 +48,59 @@ export function ExploreMediaCard({
     dropped: "bg-red-500",
     paused: "bg-orange-500",
     rewatching: "bg-purple-500",
+  };
+
+  const handleQuickAction = async (statusToSet: MediaStatus) => {
+    if (isActionLoading) return;
+    if (userStatus === statusToSet) {
+      toast.info(`"${title}" is already marked as ${statusDisplayMap[statusToSet]}`);
+      return;
+    }
+
+    setIsActionLoading(true);
+    const { getMediaByAnilistId, createMedia } = await import("@/actions/media");
+    const { editMedia } = useMediaStore.getState();
+
+    try {
+      // Check if it already exists in the list
+      const res = await getMediaByAnilistId(item.id);
+      if (res.success && res.data) {
+        // Exists: update status
+        const editRes = await editMedia({
+          id: res.data.id,
+          status: statusToSet,
+        });
+        if (editRes.success) {
+          toast.success(`Updated "${title}" to ${statusDisplayMap[statusToSet]}`);
+          void mutate("user-media-statuses");
+          void fetchMedia();
+        } else {
+          toast.error(editRes.error || "Failed to update entry");
+        }
+      } else {
+        // Doesn't exist: create new entry
+        const createRes = await createMedia({
+          title,
+          type: item.type === "MANGA" ? "manga" : "anime",
+          status: statusToSet,
+          coverImage: cover,
+          total: item.episodes ?? item.chapters ?? null,
+          anilistMediaId: item.id,
+        });
+        if (createRes.success) {
+          toast.success(`Added "${title}" to ${statusDisplayMap[statusToSet]}`);
+          void mutate("user-media-statuses");
+          void fetchMedia();
+        } else {
+          toast.error(createRes.error || "Failed to add entry");
+        }
+      }
+    } catch (err) {
+      console.error("Quick action error:", err);
+      toast.error("An error occurred during quick action");
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   return (
@@ -86,8 +146,6 @@ export function ExploreMediaCard({
           </div>
         )}
 
-        {/* User status dot removed from cover to show next to title */}
-
         {/* Next airing badge */}
         {item.nextAiringEpisode && (
           <div className="absolute bottom-1.5 left-1.5 right-1.5 flex items-center gap-1 bg-black/75 backdrop-blur-sm text-white text-[10px] rounded px-1.5 py-0.5">
@@ -99,16 +157,60 @@ export function ExploreMediaCard({
           </div>
         )}
 
-        {/* Hover: quick add */}
-        <div className="absolute inset-x-0 bottom-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+        {/* Hover: Quick Actions Column (Play, Check, Calendar, Pencil) */}
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20">
           <button
-            className="w-full text-xs font-semibold bg-primary text-primary-foreground rounded py-1 hover:bg-primary/90 transition-colors"
+            className={cn(
+              "size-8 rounded-full bg-black/70 hover:bg-primary text-white flex items-center justify-center transition-all cursor-pointer shadow-md",
+              userStatus === "watching" && "ring-2 ring-blue-400 bg-blue-500/80"
+            )}
+            title="Set to Watching"
+            disabled={isActionLoading}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleQuickAction("watching");
+            }}
+          >
+            <Play className="size-3.5 fill-white text-white" />
+          </button>
+          <button
+            className={cn(
+              "size-8 rounded-full bg-black/70 hover:bg-primary text-white flex items-center justify-center transition-all cursor-pointer shadow-md",
+              userStatus === "completed" && "ring-2 ring-green-400 bg-green-500/80"
+            )}
+            title="Set to Completed"
+            disabled={isActionLoading}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleQuickAction("completed");
+            }}
+          >
+            <Check className="size-3.5 text-white" />
+          </button>
+          <button
+            className={cn(
+              "size-8 rounded-full bg-black/70 hover:bg-primary text-white flex items-center justify-center transition-all cursor-pointer shadow-md",
+              userStatus === "plan" && "ring-2 ring-yellow-400 bg-yellow-500/80"
+            )}
+            title="Plan to Watch"
+            disabled={isActionLoading}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleQuickAction("plan");
+            }}
+          >
+            <Calendar className="size-3.5 text-white" />
+          </button>
+          <button
+            className="size-8 rounded-full bg-black/70 hover:bg-primary text-white flex items-center justify-center transition-all cursor-pointer shadow-md"
+            title="Edit detailed entry"
+            disabled={isActionLoading}
             onClick={(e) => {
               e.stopPropagation();
               onAddToList?.(item);
             }}
           >
-            + Add to List
+            <Pencil className="size-3.5 text-white" />
           </button>
         </div>
       </div>

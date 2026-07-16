@@ -49,7 +49,8 @@ export function EditMediaModal({
 	const [notes, setNotes] = useState(item.notes || "");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	const { editMedia, removeMedia, fetchMedia, activeMediaType } = useMediaStore();
+	const { editMedia, removeMedia, fetchMedia, activeMediaType } =
+		useMediaStore();
 
 	// Reset form when item changes
 	useEffect(() => {
@@ -220,7 +221,7 @@ export function EditMediaModal({
 								htmlFor="edit-rating"
 								className="flex items-center gap-1.5"
 							>
-								<Star className="size-3.5 text-yellow-500 fill-yellow-500" />
+								<Star className="size-3.5 text-neutral-500 fill-gray-500" />
 								Rating (0 – 10)
 							</Label>
 							<div className="flex items-center gap-2">
