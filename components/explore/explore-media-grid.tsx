@@ -1,9 +1,9 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Loader2, AlertCircle } from "lucide-react";
 import { ExploreMediaCard } from "./explore-media-card";
 import type { ExploreMediaItem } from "@/actions/explore";
-import { Button } from "@/components/ui/button";
 
 interface ExploreMediaGridProps {
   items: ExploreMediaItem[];
@@ -22,6 +22,27 @@ export function ExploreMediaGrid({
   onLoadMore,
   onAddToList,
 }: ExploreMediaGridProps) {
+  const observerTarget = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const target = observerTarget.current;
+    if (!target || !hasNextPage || isLoading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          onLoadMore?.();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(target);
+    return () => {
+      if (target) observer.unobserve(target);
+    };
+  }, [hasNextPage, isLoading, onLoadMore]);
+
   if (isLoading && items.length === 0) {
     return (
       <div className="flex items-center justify-center h-48">
@@ -51,20 +72,12 @@ export function ExploreMediaGrid({
         ))}
       </div>
 
-      {/* Load More */}
+      {/* Infinite Scroll Sentinel */}
       {hasNextPage && (
-        <div className="flex justify-center pt-4">
-          <Button
-            variant="outline"
-            onClick={onLoadMore}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <><Loader2 className="h-4 w-4 animate-spin mr-2" />Loading...</>
-            ) : (
-              "Load More"
-            )}
-          </Button>
+        <div ref={observerTarget} className="flex justify-center py-6 w-full min-h-[48px]">
+          {isLoading && (
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          )}
         </div>
       )}
     </div>
