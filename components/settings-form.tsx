@@ -387,8 +387,8 @@ export function SettingsForm() {
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<form onSubmit={handleImport} className="flex gap-2 items-end">
-						<div className="space-y-2 flex-1 max-w-sm">
+					<form onSubmit={handleImport} className="flex flex-col sm:flex-row gap-2 sm:items-end">
+						<div className="space-y-2 flex-1 w-full sm:max-w-sm">
 							<Label htmlFor="import-username">AniList Username</Label>
 							<div className="relative">
 								<AtSign className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -406,7 +406,7 @@ export function SettingsForm() {
 						<Button
 							type="submit"
 							size="sm"
-							className="gap-1.5 text-sm shrink-0"
+							className="gap-1.5 text-sm shrink-0 w-full sm:w-auto"
 							disabled={importLoading || !importUsername.trim()}
 						>
 							{importLoading ? (
