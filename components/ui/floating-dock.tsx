@@ -67,7 +67,7 @@ const FloatingDockMobile = ({
                         if (item.onClick) item.onClick();
                         setOpen(false);
                     }}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 dark:bg-neutral-900 cursor-pointer"
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-card border border-border text-foreground cursor-pointer shadow-md hover:bg-muted"
                 >
                     {item.href ? (
                          <a href={item.href} className="h-4 w-4">{item.icon}</a>
@@ -82,9 +82,9 @@ const FloatingDockMobile = ({
       </AnimatePresence>
       <button
         onClick={() => setOpen(!open)}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 dark:bg-neutral-800"
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-card border border-border text-foreground shadow-md hover:bg-muted"
       >
-        <IconLayoutNavbarCollapse className="h-5 w-5 text-neutral-500 dark:text-neutral-400" />
+        <IconLayoutNavbarCollapse className="h-5 w-5 text-foreground" />
       </button>
     </div>
   );
@@ -103,7 +103,7 @@ const FloatingDockDesktop = ({
       onMouseMove={(e) => mouseX.set(e.pageX)}
       onMouseLeave={() => mouseX.set(Infinity)}
       className={cn(
-        "mx-auto hidden h-16 items-end gap-4 rounded-2xl bg-gray-50 px-4 pb-3 md:flex dark:bg-neutral-900",
+        "mx-auto hidden h-16 items-end gap-4 rounded-2xl bg-card border border-border px-4 pb-3 md:flex shadow-xl",
         className,
       )}
     >
@@ -175,7 +175,7 @@ function IconContainer({
         style={{ width, height }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className="relative flex aspect-square items-center justify-center rounded-full bg-gray-200 dark:bg-neutral-800 cursor-pointer"
+        className="relative flex aspect-square items-center justify-center rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer border border-border/40 shadow-sm"
         onClick={onClick}
       >
         <AnimatePresence>
@@ -184,7 +184,7 @@ function IconContainer({
               initial={{ opacity: 0, y: 10, x: "-50%" }}
               animate={{ opacity: 1, y: 0, x: "-50%" }}
               exit={{ opacity: 0, y: 2, x: "-50%" }}
-              className="absolute -top-8 left-1/2 w-fit rounded-md border border-gray-200 bg-gray-100 px-2 py-0.5 text-xs whitespace-pre text-neutral-700 dark:border-neutral-900 dark:bg-neutral-800 dark:text-white"
+              className="absolute -top-8 left-1/2 w-fit rounded-md border border-border bg-popover px-2 py-0.5 text-xs whitespace-pre text-popover-foreground shadow-md"
             >
               {title}
             </motion.div>
