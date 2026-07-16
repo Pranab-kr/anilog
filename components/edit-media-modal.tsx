@@ -1,11 +1,10 @@
 "use client";
 
-import { Star } from "lucide-react";
+import { Star, Trash2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { MediaItem, MediaStatus, MediaType } from "@/actions/media";
-import { ImageUploader } from "@/components/image-uploader";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -24,7 +23,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { statusDisplayMap, useMediaStore } from "@/store/media-store";
 
@@ -51,7 +49,7 @@ export function EditMediaModal({
 	const [notes, setNotes] = useState(item.notes || "");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	const { editMedia, fetchMedia, activeMediaType } = useMediaStore();
+	const { editMedia, removeMedia, fetchMedia, activeMediaType } = useMediaStore();
 
 	// Reset form when item changes
 	useEffect(() => {
@@ -108,6 +106,20 @@ export function EditMediaModal({
 		}
 	};
 
+	const handleDelete = async () => {
+		if (window.confirm(`Are you sure you want to delete "${item.title}"?`)) {
+			setIsSubmitting(true);
+			const result = await removeMedia(item.id);
+			if (result.success) {
+				toast.success(`Deleted "${item.title}" successfully`);
+				onOpenChange(false);
+			} else {
+				toast.error(result.error || "Failed to delete entry");
+				setIsSubmitting(false);
+			}
+		}
+	};
+
 	const progressLabel = mediaType === "anime" ? "Episodes" : "Chapters";
 
 	return (
@@ -115,44 +127,32 @@ export function EditMediaModal({
 			<DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
 				<form onSubmit={handleSubmit}>
 					<DialogHeader>
-						<DialogTitle>Edit Entry</DialogTitle>
+						<DialogTitle className="truncate">Edit {item.title}</DialogTitle>
 						<DialogDescription>
-							Update the details of your entry.
+							Update your status and progress details for this entry.
 						</DialogDescription>
 					</DialogHeader>
 
 					<div className="grid gap-4 py-4">
-						{/* Media Type Tabs */}
-						<div className="space-y-2">
-							<Label>Type</Label>
-							<Tabs
-								value={mediaType}
-								onValueChange={(v) => setMediaType(v as MediaType)}
-								className="w-full"
-							>
-								<TabsList className="grid w-full grid-cols-2">
-									<TabsTrigger value="anime" disabled={isSubmitting}>
-										Anime
-									</TabsTrigger>
-									<TabsTrigger value="manga" disabled={isSubmitting}>
-										Manga
-									</TabsTrigger>
-								</TabsList>
-							</Tabs>
-						</div>
-
-						{/* Title — full width, handles long titles */}
-						<div className="space-y-2">
-							<Label htmlFor="edit-title">Title</Label>
-							<Input
-								id="edit-title"
-								value={title}
-								onChange={(e) => setTitle(e.target.value)}
-								className="w-full"
-								required
-								disabled={isSubmitting}
-							/>
-						</div>
+						{/* Cover Image & Info Display */}
+						{coverImage && (
+							<div className="flex gap-4 items-start rounded-lg border bg-muted/20 p-3">
+								<div className="relative aspect-[2/3] w-16 overflow-hidden rounded-md border shrink-0">
+									{/* eslint-disable-next-line @next/next/no-img-element */}
+									<img
+										src={coverImage}
+										alt={title}
+										className="h-full w-full object-cover"
+									/>
+								</div>
+								<div className="space-y-1">
+									<div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+										{mediaType} Details
+									</div>
+									<div className="text-sm font-semibold">{title}</div>
+								</div>
+							</div>
+						)}
 
 						{/* Status */}
 						<div className="space-y-2">
@@ -240,48 +240,48 @@ export function EditMediaModal({
 									/ 10
 								</span>
 							</div>
-							{/* <p className="text-xs text-muted-foreground"> */}
-							{/* 	Synced with AniList score */}
-							{/* </p> */}
 						</div>
 
 						{/* Notes */}
-						{/* <div className="space-y-2"> */}
-						{/* 	<Label htmlFor="edit-notes">Notes</Label> */}
-						{/* 	<Textarea */}
-						{/* 		id="edit-notes" */}
-						{/* 		value={notes} */}
-						{/* 		onChange={(e) => setNotes(e.target.value)} */}
-						{/* 		className="w-full" */}
-						{/* 		placeholder="Add personal notes (optional)" */}
-						{/* 		rows={3} */}
-						{/* 		disabled={isSubmitting} */}
-						{/* 	/> */}
-						{/* </div> */}
-
-						{/* Cover Image */}
-						<div className="space-y-3">
-							<Label>Cover Image</Label>
-							<ImageUploader
-								value={coverImage}
-								onChange={setCoverImage}
+						<div className="space-y-2">
+							<Label htmlFor="edit-notes">Notes</Label>
+							<Textarea
+								id="edit-notes"
+								value={notes}
+								onChange={(e) => setNotes(e.target.value)}
+								className="w-full"
+								placeholder="Add personal notes (optional)"
+								rows={3}
 								disabled={isSubmitting}
 							/>
 						</div>
 					</div>
 
-					<DialogFooter>
+					<DialogFooter className="flex justify-between items-center w-full gap-2 sm:gap-0">
 						<Button
 							type="button"
-							variant="outline"
-							onClick={() => onOpenChange(false)}
+							variant="destructive"
+							onClick={handleDelete}
 							disabled={isSubmitting}
+							className="gap-1.5 text-xs mr-auto shrink-0"
 						>
-							Cancel
+							<Trash2 className="size-3.5" />
+							Delete
 						</Button>
-						<Button type="submit" disabled={isSubmitting}>
-							{isSubmitting ? "Saving..." : "Save Changes"}
-						</Button>
+						<div className="flex items-center gap-2">
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => onOpenChange(false)}
+								disabled={isSubmitting}
+								className="text-xs"
+							>
+								Cancel
+							</Button>
+							<Button type="submit" disabled={isSubmitting} className="text-xs">
+								{isSubmitting ? "Saving..." : "Save Changes"}
+							</Button>
+						</div>
 					</DialogFooter>
 				</form>
 			</DialogContent>

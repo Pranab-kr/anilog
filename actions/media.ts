@@ -523,12 +523,43 @@ export async function getUserMediaStatuses(): Promise<{
       }
     }
 
-    return { success: true, data: mapping };
+    return {
+      success: true,
+      data: mapping,
+    };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to get user media statuses",
+      error:
+        error instanceof Error ? error.message : "Failed to get user media statuses",
     };
   }
 }
+
+/** Fetch a media item by its AniList Media ID for the current user. */
+export async function getMediaByAnilistId(anilistMediaId: number): Promise<{
+  success: boolean;
+  data?: MediaItem | null;
+  error?: string;
+}> {
+  try {
+    const user = await getCurrentUser();
+    const [row] = await db
+      .select()
+      .from(media)
+      .where(
+        and(
+          eq(media.userId, user.id),
+          eq(media.anilistMediaId, anilistMediaId),
+        ),
+      );
+    return { success: true, data: row ?? null };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get media by AniList ID",
+    };
+  }
+}
+
 
