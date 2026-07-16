@@ -499,3 +499,36 @@ export async function deleteAllMedia(): Promise<{
     };
   }
 }
+
+/** Fetch all AniList Media IDs and their watch status for the current user. */
+export async function getUserMediaStatuses(): Promise<{
+  success: boolean;
+  data?: Record<number, MediaStatus>;
+  error?: string;
+}> {
+  try {
+    const user = await getCurrentUser();
+    const rows = await db
+      .select({
+        anilistMediaId: media.anilistMediaId,
+        status: media.status,
+      })
+      .from(media)
+      .where(eq(media.userId, user.id));
+
+    const mapping: Record<number, MediaStatus> = {};
+    for (const r of rows) {
+      if (r.anilistMediaId !== null) {
+        mapping[r.anilistMediaId] = r.status;
+      }
+    }
+
+    return { success: true, data: mapping };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get user media statuses",
+    };
+  }
+}
+

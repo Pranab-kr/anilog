@@ -36,6 +36,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useAniList } from "@/hooks/use-anilist";
 import { useMediaStore } from "@/store/media-store";
 import { deleteAllMedia } from "@/actions/media";
+import { mutate } from "swr";
 import {
 	getAniListImportJob,
 	importPublicAniListList,
@@ -225,6 +226,7 @@ export function SettingsForm() {
 			setClearDialogOpen(false);
 			setConfirmText("");
 			await fetchMedia();
+			void mutate("user-media-statuses");
 		} else {
 			toast.error(result.error ?? "Failed to clear list");
 		}

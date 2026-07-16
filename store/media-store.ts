@@ -11,6 +11,7 @@ import {
 } from "@/actions/media";
 
 import { create } from "zustand";
+import { mutate } from "swr";
 
 interface MediaStore {
   media: MediaItem[];
@@ -115,6 +116,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
     if (result.success && result.data) {
       await get().fetchMedia();
+      void mutate("user-media-statuses");
       return { success: true };
     } else {
       set({ error: result.error || "Failed to update media", isLoading: false });
@@ -167,6 +169,8 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
         if (!result.success) {
           set({ error: result.error || "Failed to update progress" });
           await get().fetchMedia();
+        } else {
+          void mutate("user-media-statuses");
         }
       }, PROGRESS_COMMIT_DELAY_MS),
     );
@@ -193,6 +197,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     const totalAfterDelete = Math.max(0, total - 1);
     const maxPage = Math.max(1, Math.ceil(totalAfterDelete / pageSize));
     await get().fetchMedia({ page: Math.min(page, maxPage) });
+    void mutate("user-media-statuses");
 
     return { success: true };
   },

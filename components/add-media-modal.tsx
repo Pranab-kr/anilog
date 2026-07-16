@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { searchAniList } from "@/actions/anilist-search";
 import type { AniListSearchResult } from "@/lib/anilist/types";
 import { createMedia } from "@/actions/media";
+import { mutate } from "swr";
 import type { MediaStatus, MediaType } from "@/actions/media";
 import { Button } from "@/components/ui/button";
 import {
@@ -265,6 +266,7 @@ function ModalContent({
       toast.success(`Added "${title}" to your list`);
       // Refresh list in background — don't block the modal
       void fetchMedia();
+      void mutate("user-media-statuses");
     } else {
       toast.error(res.error ?? "Failed to add entry");
     }

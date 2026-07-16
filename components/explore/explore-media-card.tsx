@@ -5,11 +5,12 @@ import { Star, Play, BookOpen, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ExploreMediaItem } from "@/actions/explore";
 import { Badge } from "@/components/ui/badge";
+import { useUserMediaStatuses } from "@/hooks/use-user-media-statuses";
+import { statusDisplayMap } from "@/store/media-store";
+import type { MediaStatus } from "@/actions/media";
 
 interface ExploreMediaCardProps {
   item: ExploreMediaItem;
-  /** If provided, a coloured badge overlay is shown on the card */
-  userStatus?: string | null;
   onAddToList?: (item: ExploreMediaItem) => void;
   className?: string;
 }
@@ -23,10 +24,11 @@ function formatAiringTime(seconds: number): string {
 
 export function ExploreMediaCard({
   item,
-  userStatus,
   onAddToList,
   className,
 }: ExploreMediaCardProps) {
+  const { statuses } = useUserMediaStatuses();
+  const userStatus = statuses[item.id];
   const title = item.title.english ?? item.title.romaji ?? "Unknown";
   const score = item.averageScore ? Math.round(item.averageScore) : null;
   const cover = item.coverImage.extraLarge ?? item.coverImage.large;
@@ -84,15 +86,7 @@ export function ExploreMediaCard({
           </div>
         )}
 
-        {/* User status badge */}
-        {userStatus && (
-          <div
-            className={cn(
-              "absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full ring-2 ring-background",
-              statusColor[userStatus] ?? "bg-gray-400",
-            )}
-          />
-        )}
+        {/* User status dot removed from cover to show next to title */}
 
         {/* Next airing badge */}
         {item.nextAiringEpisode && (
@@ -121,9 +115,20 @@ export function ExploreMediaCard({
 
       {/* Info */}
       <div className="p-2 min-h-[52px] flex flex-col justify-start">
-        <p className="text-xs font-medium leading-snug line-clamp-2 break-words text-foreground">
-          {title}
-        </p>
+        <div className="flex items-start gap-1.5">
+          {userStatus && (
+            <span
+              className={cn(
+                "size-2 rounded-full mt-1.5 shrink-0",
+                statusColor[userStatus] ?? "bg-gray-400"
+              )}
+              title={statusDisplayMap[userStatus as MediaStatus] || "In List"}
+            />
+          )}
+          <p className="text-xs font-medium leading-snug line-clamp-2 break-words text-foreground flex-1">
+            {title}
+          </p>
+        </div>
         {item.format && (
           <Badge variant="secondary" className="mt-1 text-[10px] h-4 px-1.5 w-fit">
             {item.format.replace(/_/g, " ")}

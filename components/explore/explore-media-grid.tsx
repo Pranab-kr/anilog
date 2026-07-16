@@ -12,7 +12,6 @@ interface ExploreMediaGridProps {
   hasNextPage?: boolean;
   onLoadMore?: () => void;
   onAddToList?: (item: ExploreMediaItem) => void;
-  userMediaIds?: Set<number>;
 }
 
 export function ExploreMediaGrid({
@@ -22,7 +21,6 @@ export function ExploreMediaGrid({
   hasNextPage,
   onLoadMore,
   onAddToList,
-  userMediaIds,
 }: ExploreMediaGridProps) {
   if (isLoading && items.length === 0) {
     return (
@@ -48,7 +46,6 @@ export function ExploreMediaGrid({
           <ExploreMediaCard
             key={item.id}
             item={item}
-            userStatus={userMediaIds?.has(item.id) ? "completed" : undefined}
             onAddToList={onAddToList}
           />
         ))}
